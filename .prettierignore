@@ -1,0 +1,6 @@
+# Generated / vendored files
+src/components/ui
+src/generated
+src/app/globals.css
+prisma/migrations
+.next
