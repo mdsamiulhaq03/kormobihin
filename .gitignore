@@ -30,8 +30,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files (the example file is committed, real secrets are not)
 .env*
+!.env.example
+
+# generated prisma client
+/src/generated
+
+# personal study notes (not part of the submission)
+/docs
 
 # vercel
 .vercel
