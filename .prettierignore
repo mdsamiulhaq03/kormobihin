@@ -4,3 +4,4 @@ src/generated
 src/app/globals.css
 prisma/migrations
 .next
+src/lib/utils.ts
