@@ -1,7 +1,8 @@
 import "server-only";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { AppError, RateLimitError, ValidationError } from "@/lib/errors";
+import { AppError, NotFoundError, RateLimitError, ValidationError } from "@/lib/errors";
+import { idSchema } from "@/lib/validators/common";
 
 /** Every API response has this shape, so the frontend handles all routes the same way. */
 export type ApiResponse<T> =
@@ -24,6 +25,19 @@ export function parseOrThrow<T extends z.ZodType>(schema: T, data: unknown): z.i
     throw new ValidationError(undefined, fieldErrors as Record<string, string[]>);
   }
   return result.data;
+}
+
+/** Validates a route id param ("/api/applications/[id]"); a bad id is a 404, not a crash. */
+export function parseId(value: string): string {
+  const result = idSchema.safeParse(value);
+  if (!result.success) throw new NotFoundError();
+  return result.data;
+}
+
+/** Turns ?stage=APPLIED&q=react into a plain object for Zod (empty values dropped). */
+export function searchParamsToObject(request: Request): Record<string, string> {
+  const params = new URL(request.url).searchParams;
+  return Object.fromEntries([...params.entries()].filter(([, value]) => value !== ""));
 }
 
 /** Reads a JSON body; a malformed body becomes a 400 instead of a crash. */
