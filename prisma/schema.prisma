@@ -1,0 +1,134 @@
+// KormoBihin data model.
+// A User owns Resumes and Applications. An Application optionally uses one Resume,
+// and owns its StageHistory (audit timeline) and Interview rounds.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Stage {
+  WISHLIST
+  APPLIED
+  SHORTLISTED
+  INTERVIEW
+  OFFER
+  ACCEPTED
+  REJECTED
+  DECLINED
+}
+
+enum JobSource {
+  BDJOBS
+  LINKEDIN
+  FACEBOOK
+  COMPANY_SITE
+  REFERRAL
+  OTHER
+}
+
+enum InterviewType {
+  PHONE
+  WRITTEN
+  VIVA
+  TECHNICAL
+  HR
+  OTHER
+}
+
+enum InterviewOutcome {
+  PENDING
+  PASSED
+  FAILED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  resumes      Resume[]
+  applications Application[]
+}
+
+model Resume {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String
+  content      String        @db.Text
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  applications Application[]
+
+  @@index([userId])
+}
+
+model Application {
+  id             String         @id @default(cuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Deleting a resume keeps the application but clears the link.
+  resumeId       String?
+  resume         Resume?        @relation(fields: [resumeId], references: [id], onDelete: SetNull)
+  company        String
+  title          String
+  source         JobSource      @default(OTHER)
+  jobUrl         String?
+  jobDescription String         @db.Text
+  location       String?
+  salaryMin      Int?
+  salaryMax      Int?
+  deadline       DateTime?
+  appliedAt      DateTime?
+  stage          Stage          @default(WISHLIST)
+  notes          String?        @db.Text
+  // Latest AI match result (null until "Check match" succeeds).
+  matchScore     Int?
+  matchLabel     String?
+  matchedSkills  String[]       @default([])
+  missingSkills  String[]       @default([])
+  matchTips      String[]       @default([])
+  matchedAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  history        StageHistory[]
+  interviews     Interview[]
+
+  @@index([userId, stage])
+  @@index([userId, createdAt])
+}
+
+model StageHistory {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  // Null for the first entry, when the application is created.
+  fromStage     Stage?
+  toStage       Stage
+  note          String?
+  changedAt     DateTime    @default(now())
+
+  @@index([applicationId, changedAt])
+}
+
+model Interview {
+  id            String           @id @default(cuid())
+  applicationId String
+  application   Application      @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  round         Int
+  scheduledAt   DateTime
+  type          InterviewType    @default(OTHER)
+  outcome       InterviewOutcome @default(PENDING)
+  notes         String?          @db.Text
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([applicationId, scheduledAt])
+}
