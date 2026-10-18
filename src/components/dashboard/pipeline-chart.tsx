@@ -1,42 +1,33 @@
-"use client";
-
-import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 import { STAGE_HEX } from "@/components/applications/badges";
 import type { Stage } from "@/generated/prisma/enums";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { donutPaths } from "@/lib/client/donut";
+
+const BOX = { size: 200, outer: 96, inner: 56 };
 
 /**
- * Donut of applications per stage, with the total in the middle. Decorative for screen
- * readers: the legend list next to it carries the same numbers as links.
+ * Donut of applications per stage, with the total in the middle. Plain SVG rendered on
+ * the server (no chart library, no client JavaScript); it pops in with the shared
+ * kb-pop animation, which is off for reduced motion. Decorative for screen readers:
+ * the legend next to it carries the same numbers as links.
  */
 export function PipelineChart({ counts, total }: { counts: [Stage, number][]; total: number }) {
-  const reducedMotion = useReducedMotion();
-  const data = counts.filter(([, count]) => count > 0).map(([stage, value]) => ({ stage, value }));
+  const slices = donutPaths(counts, BOX);
 
   return (
     <div className="relative mx-auto aspect-square w-full max-w-56" aria-hidden>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="stage"
-            innerRadius="58%"
-            outerRadius="96%"
-            startAngle={90}
-            endAngle={-270}
+      <svg viewBox={`0 0 ${BOX.size} ${BOX.size}`} className="kb-pop size-full">
+        {slices.map(({ key, d }) => (
+          <path
+            key={key}
+            d={d}
+            fill={STAGE_HEX[key]}
+            fillRule="evenodd"
             stroke="var(--ink)"
             strokeWidth={2}
-            isAnimationActive={!reducedMotion}
-            animationDuration={700}
-            animationEasing="ease-out"
-          >
-            {data.map(({ stage }) => (
-              <Cell key={stage} fill={STAGE_HEX[stage]} />
-            ))}
-          </Pie>
-        </PieChart>
-      </ResponsiveContainer>
+            strokeLinejoin="round"
+          />
+        ))}
+      </svg>
       <div className="pointer-events-none absolute inset-0 grid place-content-center text-center">
         <span className="font-heading text-4xl leading-none font-extrabold tabular-nums">
           {total}
