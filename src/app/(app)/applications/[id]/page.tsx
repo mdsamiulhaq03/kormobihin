@@ -1,18 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { ArrowLeftIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
+import { ViewTransition, type ReactNode } from "react";
+import { ArrowLeftIcon, CalendarClockIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
 import { FlagList, StageBadge } from "@/components/applications/badges";
 import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
 import { InterviewSection } from "@/components/applications/interview-section";
 import { MatchPanel } from "@/components/applications/match-panel";
 import { StageActions } from "@/components/applications/stage-actions";
 import { StageTimeline } from "@/components/applications/stage-timeline";
+import { OfferBanner } from "@/components/applications/offer-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requirePageUser } from "@/lib/auth/session";
-import { formatDate, formatRelativeDays, formatSalary } from "@/lib/client/format";
-import { SOURCE_LABELS } from "@/lib/domain/labels";
+import { formatDate, formatDateTime, formatRelativeDays, formatSalary } from "@/lib/client/format";
+import { INTERVIEW_TYPE_LABELS, SOURCE_LABELS } from "@/lib/domain/labels";
+import { countActiveApplications, countOpenApplications } from "@/lib/services/applications";
 import { loadApplicationOr404 } from "@/lib/services/page-data";
 
 export const metadata: Metadata = { title: "Application" };
@@ -26,49 +28,104 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <CardTitle>
+      <h2>{children}</h2>
+    </CardTitle>
+  );
+}
+
 export default async function ApplicationPage({ params }: PageProps<"/applications/[id]">) {
   const user = await requirePageUser();
   const { id } = await params;
-  const app = await loadApplicationOr404(user.id, id);
+  const [app, activeCount, openCount] = await Promise.all([
+    loadApplicationOr404(user.id, id),
+    countActiveApplications(user.id),
+    countOpenApplications(user.id),
+  ]);
   const now = new Date();
   const salary = formatSalary(app.salaryMin, app.salaryMax);
+  const nextInterview = app.interviews
+    .filter((i) => i.outcome === "PENDING" && i.scheduledAt.getTime() >= now.getTime())
+    .sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime())[0];
 
   return (
     <>
       <Link
         href="/applications"
-        className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        className="flex min-h-10 w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeftIcon className="size-4" aria-hidden /> All applications
       </Link>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="grid gap-2">
+      <div className="flex items-start justify-between gap-4">
+        <div className="grid min-w-0 gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-semibold tracking-tight">{app.company}</h1>
-            <StageBadge stage={app.stage} />
+            <h1 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
+              {app.company}
+            </h1>
+            {/* Pops to the new stage when it changes (view transition on refresh). */}
+            <ViewTransition update="stage-pop" default="none">
+              <span className="inline-flex">
+                <StageBadge stage={app.stage} />
+              </span>
+            </ViewTransition>
           </div>
           <p className="text-muted-foreground">{app.title}</p>
           <FlagList flags={app.flags} />
         </div>
-        <div className="flex gap-2">
-          <Button asChild variant="outline">
-            <Link href={`/applications/${app.id}/edit`}>
-              <PencilIcon aria-hidden /> Edit
-            </Link>
-          </Button>
-          <DeleteApplicationButton applicationId={app.id} company={app.company} />
-        </div>
+        <Button asChild variant="outline" className="h-10 shrink-0 sm:h-8">
+          <Link href={`/applications/${app.id}/edit`}>
+            <PencilIcon aria-hidden /> Edit
+          </Link>
+        </Button>
       </div>
+
+      {app.stage === "OFFER" || app.stage === "ACCEPTED" ? (
+        <OfferBanner
+          title={
+            app.stage === "OFFER"
+              ? `You have an offer from ${app.company}. Congratulations!`
+              : `You accepted the offer from ${app.company}. Congratulations on the new job!`
+          }
+          body={
+            app.stage === "OFFER"
+              ? "Take your time. Compare the salary, the team and what you’ll learn before you decide."
+              : "All that tracking paid off. Wishing you a great first day."
+          }
+        />
+      ) : null}
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="grid content-start gap-6">
-          <Card>
+          <Card className="bg-[color-mix(in_oklch,var(--primary),white_92%)]">
             <CardHeader>
-              <CardTitle>Next step</CardTitle>
+              <SectionTitle>Next step</SectionTitle>
             </CardHeader>
-            <CardContent>
-              <StageActions applicationId={app.id} nextStages={app.nextStages} />
+            <CardContent className="grid gap-4">
+              {nextInterview ? (
+                <p className="flex items-start gap-2 text-sm">
+                  <CalendarClockIcon
+                    className="mt-0.5 size-4 shrink-0 text-amber-600"
+                    aria-hidden
+                  />
+                  <span>
+                    Prepare for round {nextInterview.round},{" "}
+                    {INTERVIEW_TYPE_LABELS[nextInterview.type].toLowerCase()}, on{" "}
+                    {formatDateTime(nextInterview.scheduledAt)} (
+                    {formatRelativeDays(nextInterview.scheduledAt, now)}).
+                  </span>
+                </p>
+              ) : null}
+              <StageActions
+                applicationId={app.id}
+                company={app.company}
+                stage={app.stage}
+                openCount={openCount}
+                nextStages={app.nextStages}
+                activeCount={activeCount}
+              />
             </CardContent>
           </Card>
 
@@ -78,12 +135,28 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
 
           <Card>
             <CardHeader>
-              <CardTitle>Job description</CardTitle>
+              <SectionTitle>Job description</SectionTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm leading-relaxed whitespace-pre-line text-muted-foreground">
-                {app.jobDescription}
-              </p>
+              {app.jobDescription.trim() ? (
+                <p
+                  dir="auto"
+                  className="max-w-[70ch] text-base leading-relaxed whitespace-pre-line"
+                >
+                  {app.jobDescription}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No job description yet.{" "}
+                  <Link
+                    href={`/applications/${app.id}/edit`}
+                    className="font-bold text-primary underline decoration-2 underline-offset-4 hover:decoration-sun"
+                  >
+                    Paste it in
+                  </Link>{" "}
+                  to unlock the CV match.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -91,7 +164,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
         <div className="grid content-start gap-6">
           <Card>
             <CardHeader>
-              <CardTitle>Details</CardTitle>
+              <SectionTitle>Details</SectionTitle>
             </CardHeader>
             <CardContent>
               <dl className="grid gap-3">
@@ -135,7 +208,9 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
                 ) : null}
                 {app.notes ? (
                   <Detail label="Notes">
-                    <span className="whitespace-pre-line">{app.notes}</span>
+                    <span dir="auto" className="whitespace-pre-line">
+                      {app.notes}
+                    </span>
                   </Detail>
                 ) : null}
               </dl>
@@ -144,12 +219,14 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
 
           <Card>
             <CardHeader>
-              <CardTitle>Timeline</CardTitle>
+              <SectionTitle>Timeline</SectionTitle>
             </CardHeader>
             <CardContent>
               <StageTimeline history={app.history} />
             </CardContent>
           </Card>
+
+          <DeleteApplicationButton applicationId={app.id} company={app.company} />
         </div>
       </div>
     </>

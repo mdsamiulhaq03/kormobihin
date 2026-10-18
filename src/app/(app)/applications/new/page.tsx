@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ApplicationForm } from "@/components/applications/application-form";
 import { PageHeader } from "@/components/app/page-header";
 import { requirePageUser } from "@/lib/auth/session";
+import { defaultResumeId } from "@/lib/domain/resumes";
 import { listResumes } from "@/lib/services/resumes";
 
 export const metadata: Metadata = { title: "Add application" };
@@ -16,7 +17,10 @@ export default async function NewApplicationPage() {
         title="Add application"
         description="Save a job you applied to, or one you plan to apply to."
       />
-      <ApplicationForm resumes={resumes.map(({ id, label }) => ({ id, label }))} />
+      <ApplicationForm
+        resumes={resumes.map(({ id, label }) => ({ id, label }))}
+        defaultResumeId={defaultResumeId(resumes)}
+      />
     </div>
   );
 }

@@ -4,23 +4,24 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Playful Geometric, KormoBihin edition: "stable grid, wild edges".
+ * Content sits on clean paper with ink outlines and hard shadows; decoration (shapes,
+ * dots, squiggles) lives at the edges. Brand green stays the action colour; pink, sun
+ * and grape are confetti for decoration only, never for meaning.
+ */
 @theme inline {
   --color-background: var(--background);
+  --color-canvas: var(--canvas);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-pink: var(--pink);
+  --color-sun: var(--sun);
+  --color-grape: var(--grape);
+  --font-sans: var(--font-body);
+  --font-heading: var(--font-display);
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
@@ -46,75 +47,54 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Hard "pop" shadows: no blur, solid offset. --pop shrinks to 2px on phones. */
+  --shadow-pop: var(--pop) var(--pop) 0 0 var(--ink);
+  --shadow-pop-hover: calc(var(--pop) + 2px) calc(var(--pop) + 2px) 0 0 var(--ink);
+  --shadow-pop-press: calc(var(--pop) / 2) calc(var(--pop) / 2) 0 0 var(--ink);
+  --shadow-pop-primary: var(--pop) var(--pop) 0 0 var(--primary);
+  --shadow-pop-destructive: var(--pop) var(--pop) 0 0 var(--destructive);
+  --shadow-sticker: calc(var(--pop) * 1.5) calc(var(--pop) * 1.5) 0 0 var(--border);
+  --shadow-sticker-pink: calc(var(--pop) * 1.5) calc(var(--pop) * 1.5) 0 0 var(--pink);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
+  --ink: #1e293b;
+  --paper: #fffdf5;
+  --pink: #f472b6;
+  --sun: #fbbf24;
+  --grape: #8b5cf6;
+  --pop: 4px;
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
   --primary: oklch(0.47 0.11 163);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: var(--ink);
+  --muted: #f1f5f9;
+  /* slate-600, not the system's slate-500: 500 drops to 4.3:1 on muted surfaces. */
+  --muted-foreground: #475569;
+  --accent: #f1f5f9;
+  --accent-foreground: var(--ink);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.6 0.1 163);
+  --border: #e2e8f0;
+  --input: #cbd5e1;
+  --ring: oklch(0.47 0.11 163);
+  --canvas: var(--paper);
   --chart-1: oklch(0.47 0.11 163);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --chart-2: oklch(0.78 0.06 163);
+  --radius: 0.75rem;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@media (max-width: 639px) {
+  :root {
+    --pop: 2px;
+  }
 }
 
 @layer base {
@@ -123,11 +103,136 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* User text (company names, pasted links, notes) can be one long unbroken word. */
+    overflow-wrap: anywhere;
   }
-  button:not(:disabled), [role="button"]:not(:disabled) {
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-heading);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
     @apply font-sans;
+    scrollbar-color: color-mix(in oklch, var(--primary), transparent 55%) transparent;
   }
+  ::selection {
+    background: var(--sun);
+    color: var(--ink);
+  }
+  input,
+  textarea {
+    caret-color: var(--primary);
+  }
+  a {
+    text-underline-offset: 0.2em;
+  }
+  /* Chunky icons: Lucide strokes at 2.5 everywhere. */
+  svg.lucide {
+    stroke-width: 2.5;
+  }
+}
+
+/* Dot grid and stripe fills for decorative areas. */
+@utility bg-dots {
+  background-image: radial-gradient(
+    color-mix(in oklch, var(--ink), transparent 78%) 1.5px,
+    transparent 1.6px
+  );
+  background-size: 18px 18px;
+}
+@utility bg-dots-light {
+  background-image: radial-gradient(
+    color-mix(in oklch, white, transparent 70%) 1.5px,
+    transparent 1.6px
+  );
+  background-size: 18px 18px;
+}
+@utility bg-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in oklch, var(--ink), transparent 88%) 0 2px,
+    transparent 2px 10px
+  );
+}
+
+/* Motion. Content is visible by default; these only play when the visitor hasn't asked for
+   reduced motion. Exponential ease-out: quick arrival, soft landing. */
+@keyframes kb-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes kb-wipe-x {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+@keyframes kb-rise {
+  from {
+    clip-path: inset(100% 0 -0.2em 0);
+    transform: translateY(0.2em);
+  }
+  to {
+    clip-path: inset(0 0 -0.2em 0);
+  }
+}
+@keyframes kb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes kb-wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  33% {
+    rotate: 6deg;
+  }
+  66% {
+    rotate: -6deg;
+  }
+}
+@keyframes kb-marquee {
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .kb-grow-x,
+  .kb-wipe-x,
+  .kb-rise,
+  .kb-pop {
+    animation-duration: 600ms;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    animation-fill-mode: backwards;
+    animation-delay: var(--kb-delay, 0ms);
+  }
+  .kb-grow-x {
+    animation-name: kb-grow-x;
+    transform-origin: left center;
+  }
+  .kb-wipe-x {
+    animation-name: kb-wipe-x;
+    animation-duration: 1100ms;
+  }
+  .kb-rise {
+    animation-name: kb-rise;
+  }
+  .kb-pop {
+    animation-name: kb-pop;
+    animation-duration: 450ms;
+    /* Playful pop: a small overshoot as it lands. */
+    animation-timing-function: var(--ease-bounce);
+  }
+}
+
+[data-motion-paused] :is(.kb-grow-x, .kb-wipe-x, .kb-rise, .kb-pop) {
+  animation-play-state: paused;
 }

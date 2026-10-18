@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { CLOSED_STAGES } from "@/lib/domain/stages";
 import { CalendarClockIcon, Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { FormField, fieldA11y } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
@@ -69,7 +70,9 @@ export function InterviewSection({
   const [deleting, setDeleting] = useState<Interview | null>(null);
   const [values, setValues] = useState<FormValues>(emptyForm);
   const [errors, setErrors] = useState<FieldErrors>({});
-  const canAdd = stage !== "WISHLIST";
+  // No new rounds on a wishlist item (not applied yet) or a closed application.
+  const closed = CLOSED_STAGES.includes(stage) || stage === "ACCEPTED";
+  const canAdd = stage !== "WISHLIST" && !closed;
 
   function openForm(interview: Interview | "new") {
     setErrors({});
@@ -110,7 +113,7 @@ export function InterviewSection({
             : `/api/applications/${applicationId}/interviews/${(editing as Interview).id}`,
           { method: isNew ? "POST" : "PATCH", body: payload },
         ),
-      { successMessage: isNew ? "Interview added." : "Interview updated." },
+      { successMessage: isNew ? "Round added." : "Round updated." },
     );
     if (result) setEditing(null);
   }
@@ -122,7 +125,7 @@ export function InterviewSection({
         apiRequest(`/api/applications/${applicationId}/interviews/${deleting.id}`, {
           method: "DELETE",
         }),
-      { successMessage: "Interview removed." },
+      { successMessage: "Round deleted." },
     );
     if (result) setDeleting(null);
   }
@@ -130,11 +133,15 @@ export function InterviewSection({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Interviews</CardTitle>
+        <CardTitle>
+          <h2>Interviews</h2>
+        </CardTitle>
         <CardDescription>
           {canAdd
             ? "Each round, its date and how it went."
-            : "Mark the application as Applied to add interviews."}
+            : closed
+              ? "The rounds you had for this job."
+              : "Mark the application as Applied to add interviews."}
         </CardDescription>
         {canAdd ? (
           <CardAction>
@@ -151,15 +158,15 @@ export function InterviewSection({
           <ul className="divide-y">
             {interviews.map((interview) => (
               <li key={interview.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                <div className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-sm font-semibold">
+                <div className="grid size-10 shrink-0 place-items-center rounded-full border-2 border-ink bg-sun font-heading text-sm font-extrabold">
                   R{interview.round}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  <p className="flex flex-wrap items-center gap-2 font-heading font-bold">
                     {INTERVIEW_TYPE_LABELS[interview.type]}
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+                        "rounded-full px-2.5 py-0.5 text-xs font-bold ring-[1.5px] ring-inset",
                         OUTCOME_STYLE[interview.outcome],
                       )}
                     >
@@ -171,7 +178,12 @@ export function InterviewSection({
                     {formatDateTime(interview.scheduledAt)}
                   </p>
                   {interview.notes ? (
-                    <p className="mt-1 text-sm text-muted-foreground">{interview.notes}</p>
+                    <p
+                      dir="auto"
+                      className="mt-1 text-sm whitespace-pre-line text-muted-foreground"
+                    >
+                      {interview.notes}
+                    </p>
                   ) : null}
                 </div>
                 <div className="flex gap-1">
@@ -298,7 +310,7 @@ export function InterviewSection({
             <DialogTitle>Delete round {deleting?.round}?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This removes the interview record. It can&apos;t be undone.
+            The round and its notes are removed for good. This can&apos;t be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleting(null)} disabled={pending}>
@@ -306,7 +318,7 @@ export function InterviewSection({
             </Button>
             <Button variant="destructive" onClick={remove} disabled={pending}>
               {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Delete
+              Delete round
             </Button>
           </DialogFooter>
         </DialogContent>

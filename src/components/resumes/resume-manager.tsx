@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { FileTextIcon, Loader2Icon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
-import { EmptyState } from "@/components/app/page-header";
+import { EmptyState, PageHeader } from "@/components/app/page-header";
 import { ResumeDialog, type ResumeDialogMode } from "@/components/resumes/resume-dialog";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { useApiAction } from "@/hooks/use-api-action";
 import { apiRequest } from "@/lib/client/api-client";
-import { formatDate } from "@/lib/client/format";
+import { formatDate, plural } from "@/lib/client/format";
 import type { ResumeListItem } from "@/lib/client/types";
 
 type DialogMode = ResumeDialogMode | null;
@@ -48,11 +48,17 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
 
   return (
     <>
-      <div className="flex justify-end">
-        <Button onClick={() => setDialog({ kind: "create" })}>
-          <PlusIcon aria-hidden /> Add CV
-        </Button>
-      </div>
+      <PageHeader
+        title="My CVs"
+        description="Keep a version of your CV for each kind of job, e.g. Frontend and General."
+        actions={
+          resumes.length > 0 ? (
+            <Button onClick={() => setDialog({ kind: "create" })}>
+              <PlusIcon aria-hidden /> Add CV
+            </Button>
+          ) : null
+        }
+      />
 
       {resumes.length === 0 ? (
         <EmptyState
@@ -70,14 +76,16 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
           {resumes.map((resume) => (
             <Card key={resume.id}>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileTextIcon className="size-4 text-primary" aria-hidden />
-                  {resume.label}
+                <CardTitle>
+                  <h2 className="flex items-center gap-2">
+                    <FileTextIcon className="size-4 text-primary" aria-hidden />
+                    {resume.label}
+                  </h2>
                 </CardTitle>
                 <CardDescription>
-                  Used in {resume.applicationCount} application
-                  {resume.applicationCount === 1 ? "" : "s"} · {resume.characters.toLocaleString()}{" "}
-                  characters
+                  {resume.applicationCount === 0
+                    ? "Not linked to any application yet"
+                    : `Used in ${plural(resume.applicationCount, "application")}`}
                 </CardDescription>
                 <CardAction className="flex gap-1">
                   <Button
@@ -123,8 +131,8 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
             <DialogTitle>Delete “{deleting?.label}”?</DialogTitle>
             <DialogDescription>
               {deleting && deleting.applicationCount > 0
-                ? `${deleting.applicationCount} application(s) use this CV. They will be kept, but without a CV linked, so their match can't be re-checked until you choose another.`
-                : "This CV isn't linked to any application."}
+                ? `${plural(deleting.applicationCount, "application uses", "applications use")} this CV. They will be kept, but without a CV linked, so their match can't be re-checked until you choose another.`
+                : "It isn't linked to any application. This can't be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -133,7 +141,7 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
             </Button>
             <Button variant="destructive" onClick={remove} disabled={pending}>
               {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Delete
+              Delete CV
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -8,7 +8,11 @@ import {
   requiredText,
 } from "@/lib/validators/common";
 
-export const JOB_DESCRIPTION_MIN_CHARS = 30;
+/**
+ * The job description is optional so a job can be logged in seconds (Facebook-group
+ * posts are often just an image). The AI match needs at least this much text.
+ */
+export const MATCH_MIN_JD_CHARS = 30;
 export const JOB_DESCRIPTION_MAX_CHARS = 20_000;
 
 const jobUrl = z
@@ -30,12 +34,8 @@ const applicationFields = {
   source: z.enum(JobSource, { error: "Choose where you found this job" }),
   jobUrl,
   jobDescription: z
-    .string({ error: "Paste the job description" })
+    .string({ error: "Job description must be text" })
     .trim()
-    .min(
-      JOB_DESCRIPTION_MIN_CHARS,
-      `Paste the job description (at least ${JOB_DESCRIPTION_MIN_CHARS} characters)`,
-    )
     .max(JOB_DESCRIPTION_MAX_CHARS, "Job description is too long"),
   location: optionalText(120, "Location"),
   salaryMin: optionalAmount("Minimum salary"),
@@ -58,9 +58,11 @@ export const applicationCreateSchema = z
   .object({
     ...applicationFields,
     source: applicationFields.source.default("OTHER"),
+    // Only on create: an update that omits it must leave the saved text alone.
+    jobDescription: applicationFields.jobDescription.default(""),
     // A new application starts on the wishlist or as already applied; later stages
     // are reached only through the stage workflow.
-    stage: z.enum(["WISHLIST", "APPLIED"]).default("WISHLIST"),
+    stage: z.enum(["WISHLIST", "APPLIED"]).default("APPLIED"),
   })
   .refine(salaryRangeIsValid, salaryRangeError);
 
@@ -82,6 +84,8 @@ export const applicationListQuerySchema = z.object({
   source: z.enum(JobSource).optional(),
   q: z.string().trim().max(100, "Search is too long").optional(),
   sort: z.enum(APPLICATION_SORTS).default("newest"),
+  /** "hide" leaves out rejected and declined applications. */
+  closed: z.enum(["hide"]).optional(),
 });
 
 export type ApplicationCreateInput = z.infer<typeof applicationCreateSchema>;

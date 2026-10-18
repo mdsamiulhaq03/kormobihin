@@ -26,8 +26,20 @@ export const STAGE_DOT: Record<Stage, string> = {
   DECLINED: "bg-zinc-400",
 };
 
+/** The same stage colours as hex, for charts (SVG fills cannot use Tailwind classes). */
+export const STAGE_HEX: Record<Stage, string> = {
+  WISHLIST: "#94a3b8",
+  APPLIED: "#0ea5e9",
+  SHORTLISTED: "#8b5cf6",
+  INTERVIEW: "#f59e0b",
+  OFFER: "#10b981",
+  ACCEPTED: "#047857",
+  REJECTED: "#f43f5e",
+  DECLINED: "#a1a1aa",
+};
+
 const pill =
-  "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap ring-1 ring-inset";
+  "inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold whitespace-nowrap ring-[1.5px] ring-inset";
 
 export function StageBadge({ stage, className }: { stage: Stage; className?: string }) {
   return <span className={cn(pill, STAGE_STYLES[stage], className)}>{STAGE_LABELS[stage]}</span>;

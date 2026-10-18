@@ -9,8 +9,6 @@ export type GroqConfig = {
   apiKey: string;
   model: string;
   timeoutMs?: number;
-  /** Injected in tests; defaults to the global fetch. */
-  fetch?: typeof fetch;
 };
 
 /** A user-safe AI failure with the HTTP status our API should return. */
@@ -41,13 +39,12 @@ function errorForStatus(status: number, retryAfter: string | null): AiServiceErr
  * AiServiceError with a message that is safe to show the user.
  */
 export async function callGroqJson(messages: ChatMessage[], config: GroqConfig): Promise<unknown> {
-  const doFetch = config.fetch ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
   let response: Response;
   try {
-    response = await doFetch(GROQ_CHAT_URL, {
+    response = await fetch(GROQ_CHAT_URL, {
       method: "POST",
       signal: controller.signal,
       headers: {

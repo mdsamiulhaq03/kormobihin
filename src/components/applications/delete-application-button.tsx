@@ -43,16 +43,16 @@ export function DeleteApplicationButton({
   return (
     <>
       <Button
-        variant="outline"
+        variant="ghost"
         onClick={() => setOpen(true)}
-        className="text-destructive hover:text-destructive"
+        className="w-fit text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
       >
-        <Trash2Icon aria-hidden /> Delete
+        <Trash2Icon aria-hidden /> Delete application
       </Button>
       <Dialog open={open} onOpenChange={(next) => !pending && setOpen(next)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete this application?</DialogTitle>
+            <DialogTitle>Delete {company}?</DialogTitle>
             <DialogDescription>
               {company}, its timeline and interview records will be removed permanently.
             </DialogDescription>
@@ -63,7 +63,7 @@ export function DeleteApplicationButton({
             </Button>
             <Button variant="destructive" onClick={remove} disabled={pending}>
               {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Delete
+              Delete application
             </Button>
           </DialogFooter>
         </DialogContent>

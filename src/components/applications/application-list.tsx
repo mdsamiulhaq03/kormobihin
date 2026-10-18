@@ -11,7 +11,13 @@ import {
 } from "@/components/ui/table";
 import { formatDate, formatSalary } from "@/lib/client/format";
 import type { ApplicationListItem } from "@/lib/client/types";
-import { SOURCE_LABELS } from "@/lib/domain/labels";
+import { FLAG_LABELS } from "@/lib/domain/flags";
+import { SOURCE_LABELS, STAGE_LABELS } from "@/lib/domain/labels";
+import { CLOSED_STAGES } from "@/lib/domain/stages";
+import { cn } from "@/lib/utils";
+
+/** Rejected and declined rows step back so the live applications stand out. */
+const isClosed = (stage: ApplicationListItem["stage"]) => CLOSED_STAGES.includes(stage);
 
 function dateLine(app: ApplicationListItem) {
   if (app.appliedAt) return `Applied ${formatDate(app.appliedAt)}`;
@@ -21,9 +27,12 @@ function dateLine(app: ApplicationListItem) {
 
 /** Table on wide screens, stacked cards on phones. */
 export function ApplicationList({ applications }: { applications: ApplicationListItem[] }) {
+  // The Match column only appears once at least one CV match has been checked.
+  const showMatch = applications.some((app) => app.matchScore != null);
+
   return (
     <>
-      <div className="hidden overflow-hidden rounded-xl border bg-background md:block">
+      <div className="hidden overflow-hidden rounded-2xl border-2 border-ink bg-card shadow-sticker md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -31,20 +40,28 @@ export function ApplicationList({ applications }: { applications: ApplicationLis
               <TableHead>Stage</TableHead>
               <TableHead>Source</TableHead>
               <TableHead>Dates</TableHead>
-              <TableHead className="pr-4 text-right">Match</TableHead>
+              <TableHead>Salary</TableHead>
+              {showMatch ? <TableHead className="pr-4 text-right">Match</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
             {applications.map((app) => (
-              <TableRow key={app.id} className="relative">
-                <TableCell className="max-w-72 pl-4">
+              <TableRow
+                key={app.id}
+                className={cn(
+                  "relative",
+                  isClosed(app.stage) && "bg-muted/60 text-muted-foreground",
+                )}
+              >
+                <TableCell className="max-w-72 pl-4 whitespace-normal">
                   <Link
                     href={`/applications/${app.id}`}
-                    className="font-medium after:absolute after:inset-0 hover:text-primary"
+                    className="line-clamp-2 font-heading font-bold after:absolute after:inset-0 hover:text-primary"
+                    aria-label={`${app.company}, ${app.title}, ${STAGE_LABELS[app.stage]}${app.flags.length ? `, ${app.flags.map((f) => FLAG_LABELS[f]).join(", ")}` : ""}`}
                   >
                     {app.company}
                   </Link>
-                  <p className="truncate text-xs text-muted-foreground">{app.title}</p>
+                  <p className="line-clamp-2 text-xs text-muted-foreground">{app.title}</p>
                   {app.flags.length > 0 ? (
                     <div className="mt-1">
                       <FlagList flags={app.flags} />
@@ -66,41 +83,59 @@ export function ApplicationList({ applications }: { applications: ApplicationLis
                     </span>
                   ) : null}
                 </TableCell>
-                <TableCell className="pr-4 text-right">
-                  <MatchBadge score={app.matchScore} label={app.matchLabel} />
+                <TableCell className="text-sm whitespace-nowrap text-muted-foreground tabular-nums">
+                  {formatSalary(app.salaryMin, app.salaryMax) ?? "—"}
                 </TableCell>
+                {showMatch ? (
+                  <TableCell className="pr-4 text-right">
+                    {app.matchScore != null ? (
+                      <MatchBadge score={app.matchScore} label={app.matchLabel} />
+                    ) : (
+                      <span className="text-muted-foreground" aria-label="Not checked">
+                        —
+                      </span>
+                    )}
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </div>
 
-      <ul className="grid gap-2 md:hidden">
+      <ul className="grid grid-cols-1 gap-2 md:hidden">
         {applications.map((app) => {
           const salary = formatSalary(app.salaryMin, app.salaryMax);
           return (
             <li key={app.id}>
               <Link
                 href={`/applications/${app.id}`}
-                className="grid gap-2 rounded-xl border bg-background p-3 transition-colors hover:border-primary/40"
+                className={cn(
+                  "grid grid-cols-1 gap-2 rounded-2xl border-2 p-4 transition-colors hover:bg-sun/20",
+                  isClosed(app.stage)
+                    ? "border-ink/30 bg-muted/60 text-muted-foreground"
+                    : "border-ink bg-card shadow-pop-press",
+                )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-medium">{app.company}</p>
-                    <p className="truncate text-sm text-muted-foreground">{app.title}</p>
+                    <p className="truncate font-heading font-bold">{app.company}</p>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">{app.title}</p>
                   </div>
                   <StageBadge stage={app.stage} />
                 </div>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                   <span>{dateLine(app)}</span>
                   {app.location ? (
-                    <span className="flex items-center gap-1">
-                      <MapPinIcon className="size-3" aria-hidden />
+                    <span className="flex min-w-0 items-center gap-1">
+                      <MapPinIcon className="size-3 shrink-0" aria-hidden />
                       {app.location}
                     </span>
                   ) : null}
                   {salary ? <span>{salary}</span> : null}
-                  <MatchBadge score={app.matchScore} label={app.matchLabel} />
+                  {app.matchScore != null ? (
+                    <MatchBadge score={app.matchScore} label={app.matchLabel} />
+                  ) : null}
                 </div>
                 <FlagList flags={app.flags} />
               </Link>

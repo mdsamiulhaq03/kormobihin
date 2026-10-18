@@ -43,7 +43,11 @@ export function ResumeDialog({ mode, onClose }: { mode: ResumeDialogMode; onClos
       .then((resume) => setContent(resume.content))
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        toast.error("Couldn't load this CV.");
+        toast.error(
+          error instanceof ApiClientError
+            ? error.message
+            : "Couldn't load this CV. Check your connection and try again.",
+        );
         onClose();
       })
       .finally(() => setLoadingContent(false));
@@ -161,7 +165,7 @@ export function ResumeDialog({ mode, onClose }: { mode: ResumeDialogMode; onClos
               onChange={(e) => setContent(e.target.value)}
               disabled={loadingContent}
               rows={12}
-              className="max-h-[50svh] font-mono text-xs"
+              className="max-h-[50svh] text-sm leading-relaxed"
               placeholder="Paste your CV: education, skills, projects, experience…"
             />
           </FormField>

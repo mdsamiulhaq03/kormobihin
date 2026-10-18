@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ok, withErrorHandling } from "@/lib/api";
 import { deleteSession } from "@/lib/auth/session";
+import { safeRedirectPath } from "@/lib/client/api-client";
 
 /** Normal logout from the app (fetch). */
 export const POST = withErrorHandling(async () => {
@@ -14,5 +15,10 @@ export const POST = withErrorHandling(async () => {
  */
 export async function GET(request: Request) {
   await deleteSession();
-  return NextResponse.redirect(new URL("/login", request.url));
+  const { searchParams } = new URL(request.url);
+  const loginUrl = new URL("/login", request.url);
+  const next = searchParams.get("next");
+  if (next) loginUrl.searchParams.set("next", safeRedirectPath(next));
+  if (searchParams.get("expired") === "1") loginUrl.searchParams.set("expired", "1");
+  return NextResponse.redirect(loginUrl);
 }

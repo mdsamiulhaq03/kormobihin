@@ -1,0 +1,53 @@
+/* View transitions (React <ViewTransition>). Only named elements animate; the rest of
+   the page swaps instantly, so a closing dialog never cross-fades with the board. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+/* A board card travelling to its new lane: it lifts like a peeled sticker mid-flight
+   and lands with the brand's small overshoot. */
+::view-transition-group(.card-move) {
+  animation-duration: 520ms;
+  animation-timing-function: var(--ease-bounce);
+  z-index: 1;
+}
+::view-transition-image-pair(.card-move) {
+  animation: kb-card-lift 520ms ease-out;
+}
+@keyframes kb-card-lift {
+  45% {
+    transform: scale(1.05) rotate(-2deg);
+    filter: drop-shadow(6px 6px 0 var(--ink));
+  }
+}
+
+/* Column counts and the stage badge pop when their value changes. */
+::view-transition-new(.count-tick),
+::view-transition-new(.stage-pop) {
+  animation: kb-vt-pop 380ms var(--ease-bounce) both;
+}
+::view-transition-old(.count-tick),
+::view-transition-old(.stage-pop) {
+  animation: kb-vt-fade-out 140ms ease-out both;
+}
+@keyframes kb-vt-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+@keyframes kb-vt-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*),
+  ::view-transition-image-pair(*) {
+    animation: none !important;
+  }
+}

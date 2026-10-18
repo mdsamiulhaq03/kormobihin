@@ -12,11 +12,7 @@ import { ApiClientError, apiRequest } from "@/lib/client/api-client";
 import { apiFieldErrors, zodFieldErrors, type FieldErrors } from "@/lib/client/form-errors";
 import { loginSchema } from "@/lib/validators/auth";
 
-type LoginFormProps = {
-  redirectTo: string;
-};
-
-export function LoginForm({ redirectTo }: LoginFormProps) {
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
   const [values, setValues] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<FieldErrors>({});
@@ -44,7 +40,7 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
         method: "POST",
         body: parsed.data,
       });
-      toast.success(`Welcome back, ${user.name.split(" ")[0]}!`);
+      if (redirectTo !== "/dashboard") toast.success(`Welcome back, ${user.name.split(" ")[0]}!`);
       router.replace(redirectTo);
       router.refresh();
     } catch (error) {
@@ -61,7 +57,10 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-4">
       {formError ? (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-xl border-2 border-destructive bg-destructive/5 font-medium px-3 py-2 text-sm text-destructive"
+        >
           {formError}
         </p>
       ) : null}
@@ -96,7 +95,10 @@ export function LoginForm({ redirectTo }: LoginFormProps) {
 
       <p className="text-center text-sm text-muted-foreground">
         New here?{" "}
-        <Link href="/register" className="font-medium text-foreground underline underline-offset-4">
+        <Link
+          href="/register"
+          className="font-bold text-primary underline decoration-2 underline-offset-4 hover:decoration-sun"
+        >
           Create an account
         </Link>
       </p>

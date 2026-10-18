@@ -46,13 +46,34 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
     // Non-JSON response (e.g. a platform error page) — handled below.
   }
 
+  if (response.status === 401 && !url.startsWith("/api/auth/")) {
+    redirectToLogin();
+    throw new ApiClientError("Your session has expired. Please log in again.", 401);
+  }
   if (!payload) {
-    throw new ApiClientError("Unexpected response from the server.", response.status);
+    throw new ApiClientError(
+      response.status >= 500
+        ? "The server had a problem. Please try again in a moment."
+        : "The server sent a reply we couldn't read. Please try again.",
+      response.status,
+    );
   }
   if (!payload.success) {
     throw new ApiClientError(payload.error, response.status, payload.fieldErrors);
   }
   return payload.data;
+}
+
+/**
+ * The session expired or was revoked while the page was open: clear the cookie and come
+ * back to the same page after logging in again.
+ */
+function redirectToLogin() {
+  if (typeof window === "undefined") return;
+  const back = `${window.location.pathname}${window.location.search}`;
+  // A full navigation on purpose: the route handler must run on the server to clear the cookie.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.assign(`/api/auth/logout?next=${encodeURIComponent(back)}&expired=1`);
 }
 
 /** Only allow same-site relative paths after login, to prevent open-redirect attacks. */
