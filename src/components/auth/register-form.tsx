@@ -66,7 +66,7 @@ export function RegisterForm() {
         <Input
           {...fieldA11y("name", errors.name)}
           autoComplete="name"
-          placeholder="Rahim Uddin"
+          placeholder="Samiul Haque"
           value={values.name}
           onChange={(e) => update("name")(e.target.value)}
           disabled={submitting}

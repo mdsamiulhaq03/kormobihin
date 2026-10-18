@@ -41,8 +41,8 @@ export default async function DashboardPage() {
         <PageHeader title={`Welcome, ${firstName}`} />
         <EmptyState
           icon={<BriefcaseIcon className="size-5" aria-hidden />}
-          title="KormoBihin means “jobless”. Let’s fix that."
-          description="Add the first job you applied to, or one you want to apply to, and we’ll keep track of it from here."
+          title="Your job search starts here"
+          description="Add a job you’ve applied to or plan to apply for. Your pipeline, reminders and reply insights will build from there."
           action={addButton}
         />
       </>

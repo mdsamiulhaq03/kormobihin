@@ -56,7 +56,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
         ) : (
           <EmptyState
             icon={<BriefcaseIcon className="size-5" aria-hidden />}
-            title="KormoBihin means “jobless”. Let’s fix that."
+            title="No applications yet"
             description="Save a job from Bdjobs, LinkedIn, a Facebook group or anywhere else, then follow it from applied to offer."
             action={
               <Button asChild>
