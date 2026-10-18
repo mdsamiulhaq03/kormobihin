@@ -9,6 +9,7 @@ import {
   deleteApplication,
   getApplication,
   listApplications,
+  reopenApplication,
   updateApplication,
 } from "@/lib/services/applications";
 import { createInterview, deleteInterview, updateInterview } from "@/lib/services/interviews";
@@ -29,6 +30,7 @@ const newApplication = (overrides: Record<string, unknown> = {}) =>
     title: "Junior Developer",
     source: "LINKEDIN",
     jobDescription: "React, TypeScript and REST API experience required for this role.",
+    stage: "WISHLIST",
     ...overrides,
   });
 
@@ -119,6 +121,25 @@ describe("stage workflow", () => {
     const app = await getApplication(alice, created.id);
     expect(app.history).toHaveLength(2);
   });
+
+  it("reopens a rejected application to the stage it was rejected from", async () => {
+    const created = await createApplication(alice, newApplication({ stage: "APPLIED" }));
+    await changeStage(alice, created.id, { stage: "SHORTLISTED" });
+    await changeStage(alice, created.id, { stage: "REJECTED" });
+
+    const app = await reopenApplication(alice, created.id);
+    expect(app.stage).toBe("SHORTLISTED");
+    expect(app.history.at(-1)).toMatchObject({
+      fromStage: "REJECTED",
+      toStage: "SHORTLISTED",
+      note: "Reopened",
+    });
+
+    // Only closed applications can be reopened, and only by their owner.
+    await expect(reopenApplication(alice, created.id)).rejects.toBeInstanceOf(AppError);
+    await changeStage(alice, created.id, { stage: "REJECTED" });
+    await expect(reopenApplication(bob, created.id)).rejects.toBeInstanceOf(NotFoundError);
+  });
 });
 
 describe("interviews", () => {
@@ -191,6 +212,9 @@ describe("list and stats", () => {
 
     const applied = await listApplications(bob, { stage: "APPLIED", sort: "newest" });
     expect(applied.every((a) => a.stage === "APPLIED")).toBe(true);
+
+    const open = await listApplications(bob, { closed: "hide", sort: "newest" });
+    expect(open.some((a) => a.stage === "REJECTED" || a.stage === "DECLINED")).toBe(false);
 
     const stats = await getDashboardStats(bob);
     expect(stats.byStage.APPLIED).toBeGreaterThanOrEqual(1);

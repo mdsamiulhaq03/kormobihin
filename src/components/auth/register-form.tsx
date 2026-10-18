@@ -54,7 +54,10 @@ export function RegisterForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-4">
       {formError ? (
-        <p role="alert" className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <p
+          role="alert"
+          className="rounded-xl border-2 border-destructive bg-destructive/5 font-medium px-3 py-2 text-sm text-destructive"
+        >
           {formError}
         </p>
       ) : null}
@@ -105,7 +108,10 @@ export function RegisterForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Already have an account?{" "}
-        <Link href="/login" className="font-medium text-foreground underline underline-offset-4">
+        <Link
+          href="/login"
+          className="font-bold text-primary underline decoration-2 underline-offset-4 hover:decoration-sun"
+        >
           Log in
         </Link>
       </p>

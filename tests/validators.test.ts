@@ -24,7 +24,16 @@ describe("applicationCreateSchema", () => {
   it("accepts a minimal application and applies defaults", () => {
     const result = applicationCreateSchema.parse(validApplication);
     expect(result.company).toBe("Brain Station 23");
-    expect(result.stage).toBe("WISHLIST");
+    expect(result.stage).toBe("APPLIED");
+  });
+
+  it("lets a job be logged without a job description", () => {
+    const { jobDescription, ...withoutJd } = validApplication;
+    expect(jobDescription).toBeTruthy();
+    expect(applicationCreateSchema.parse(withoutJd).jobDescription).toBe("");
+    expect(
+      applicationCreateSchema.parse({ ...withoutJd, jobDescription: "  " }).jobDescription,
+    ).toBe("");
   });
 
   it("turns empty optional form fields into null", () => {
@@ -46,7 +55,7 @@ describe("applicationCreateSchema", () => {
   it.each([
     ["missing company", { company: "" }, "company"],
     ["unknown source", { source: "MONSTER" }, "source"],
-    ["short job description", { jobDescription: "Too short" }, "jobDescription"],
+    ["job description over the limit", { jobDescription: "x".repeat(20_001) }, "jobDescription"],
     ["non-http link", { jobUrl: "javascript:alert(1)" }, "jobUrl"],
     ["invalid date", { deadline: "next tuesday" }, "deadline"],
     ["negative salary", { salaryMin: -5 }, "salaryMin"],
@@ -78,6 +87,8 @@ describe("stageChangeSchema and list query", () => {
   it("validates list filters and defaults the sort", () => {
     expect(applicationListQuerySchema.parse({}).sort).toBe("newest");
     expect(applicationListQuerySchema.safeParse({ sort: "salary" }).success).toBe(false);
+    expect(applicationListQuerySchema.parse({ closed: "hide" }).closed).toBe("hide");
+    expect(applicationListQuerySchema.safeParse({ closed: "yes" }).success).toBe(false);
   });
 });
 

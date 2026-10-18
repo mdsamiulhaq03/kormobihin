@@ -5,6 +5,7 @@ import { getEnv } from "@/lib/env";
 import { AppError, NotFoundError } from "@/lib/errors";
 import { RATE_LIMITS, checkRateLimit } from "@/lib/rate-limit";
 import { getApplication } from "@/lib/services/applications";
+import { MATCH_MIN_JD_CHARS } from "@/lib/validators/application";
 
 /**
  * Runs the AI match for one of the user's applications and stores the result.
@@ -19,6 +20,9 @@ export async function runMatch(userId: string, applicationId: string) {
   if (!application) throw new NotFoundError("Application");
   if (!application.resume) {
     throw new AppError(422, "Choose which CV you sent for this job before checking the match.");
+  }
+  if (application.jobDescription.trim().length < MATCH_MIN_JD_CHARS) {
+    throw new AppError(422, "Add the job description first, so there's something to compare.");
   }
 
   // Each check costs a Groq request; limit per user to protect the free-tier quota.

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 export default function AppNotFound() {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border bg-background px-6 py-16 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-[1.75rem] border-2 border-ink bg-card px-6 py-16 text-center shadow-sticker">
       <div className="grid size-11 place-items-center rounded-full bg-muted text-muted-foreground">
         <SearchXIcon className="size-5" aria-hidden />
       </div>

@@ -2,7 +2,7 @@ import type { InterviewOutcome, InterviewType, JobSource, Stage } from "@/genera
 import { DAY_MS, getFlags, type Flag } from "@/lib/domain/flags";
 import { RESPONDED_STAGES, STAGES } from "@/lib/domain/stages";
 
-const UPCOMING_WINDOW_DAYS = 7;
+export const UPCOMING_WINDOW_DAYS = 7;
 
 export type StatsApplication = {
   id: string;
@@ -175,4 +175,20 @@ export function computeStats(apps: StatsApplication[], now: Date): DashboardStat
     upcomingDeadlines: upcomingDeadlines(apps, now),
     flagCounts: countFlags(apps, now),
   };
+}
+
+/** A source needs at least this many sent applications before it can be called "best". */
+export const MIN_APPLIED_FOR_BEST = 2;
+
+/**
+ * The job site that replies most often. Sources with too few applications are only used
+ * when nothing else qualifies, so "1 of 1" doesn't beat "3 of 4". Null when nobody replied.
+ */
+export function bestSource(bySource: SourceStats[]): SourceStats | null {
+  const qualified = bySource.filter((s) => s.applied >= MIN_APPLIED_FOR_BEST);
+  const pool = qualified.length > 0 ? qualified : bySource;
+  const best = [...pool].sort(
+    (a, b) => b.responseRate - a.responseRate || b.applied - a.applied,
+  )[0];
+  return best && best.responded > 0 ? best : null;
 }

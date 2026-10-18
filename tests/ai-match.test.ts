@@ -92,6 +92,13 @@ describe("buildMatchMessages", () => {
     expect(user.content).toContain("[truncated]");
     expect(user.content.length).toBeLessThan(MAX_INPUT_CHARS * 2 + 500);
   });
+
+  it("tells the model to assume the basics and skip soft skills", () => {
+    const [system] = buildMatchMessages("cv", "job");
+    expect(system.content).toContain("Assume the basics");
+    expect(system.content).toContain("imply HTML, CSS and JavaScript");
+    expect(system.content).toContain("Ignore generic soft skills");
+  });
 });
 
 describe("callGroqJson error handling", () => {

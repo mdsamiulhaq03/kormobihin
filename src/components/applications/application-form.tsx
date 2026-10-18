@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Loader2Icon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 import { FormField, fieldA11y } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,11 @@ import { toDateInputValue } from "@/lib/client/format";
 import { apiFieldErrors, zodFieldErrors, type FieldErrors } from "@/lib/client/form-errors";
 import type { ApplicationDetail, ResumeOption } from "@/lib/client/types";
 import { SOURCE_LABELS } from "@/lib/domain/labels";
-import { applicationCreateSchema, applicationUpdateSchema } from "@/lib/validators/application";
+import {
+  applicationCreateSchema,
+  applicationUpdateSchema,
+  JOB_DESCRIPTION_MAX_CHARS,
+} from "@/lib/validators/application";
 import { cn } from "@/lib/utils";
 
 const NO_RESUME = "none";
@@ -43,7 +47,7 @@ type Values = {
   stage: Extract<Stage, "WISHLIST" | "APPLIED">;
 };
 
-function initialValues(application?: ApplicationDetail, resumes: ResumeOption[] = []): Values {
+function initialValues(application?: ApplicationDetail, defaultResumeId?: string | null): Values {
   return {
     company: application?.company ?? "",
     title: application?.title ?? "",
@@ -54,15 +58,28 @@ function initialValues(application?: ApplicationDetail, resumes: ResumeOption[] 
     salaryMax: application?.salaryMax?.toString() ?? "",
     deadline: toDateInputValue(application?.deadline),
     appliedAt: toDateInputValue(application?.appliedAt),
-    // New applications default to the most recently edited CV.
-    resumeId: application ? (application.resumeId ?? NO_RESUME) : (resumes[0]?.id ?? NO_RESUME),
+    // New applications start with the CV the user sends most often.
+    resumeId: application ? (application.resumeId ?? NO_RESUME) : (defaultResumeId ?? NO_RESUME),
     jobDescription: application?.jobDescription ?? "",
     notes: application?.notes ?? "",
-    stage: "WISHLIST",
+    stage: "APPLIED",
   };
 }
 
-const toAmount = (value: string) => (value.trim() === "" ? null : Number(value));
+/** "30,000" or "30000" → 30000; empty → null. */
+const toAmount = (value: string) => {
+  const cleaned = value.replace(/[,s৳]/g, "");
+  return cleaned === "" ? null : Number(cleaned);
+};
+
+const DETAIL_FIELDS = [
+  "location",
+  "jobUrl",
+  "salaryMin",
+  "salaryMax",
+  "notes",
+  "deadline",
+] as const;
 
 /** After errors render, move focus (and scroll) to the first invalid field. */
 const focusFirstInvalid = () =>
@@ -73,15 +90,31 @@ const focusFirstInvalid = () =>
 export function ApplicationForm({
   application,
   resumes,
+  defaultResumeId,
 }: {
   application?: ApplicationDetail;
   resumes: ResumeOption[];
+  defaultResumeId?: string | null;
 }) {
   const router = useRouter();
   const isEdit = Boolean(application);
-  const [values, setValues] = useState(() => initialValues(application, resumes));
+  const [values, setValues] = useState(() => initialValues(application, defaultResumeId));
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  // Optional details start open only when editing an application that already has some.
+  const [showDetails, setShowDetails] = useState(
+    () =>
+      Boolean(application) &&
+      Boolean(
+        application?.location ||
+        application?.jobUrl ||
+        application?.notes ||
+        application?.salaryMin != null ||
+        application?.salaryMax != null,
+      ),
+  );
+  // A validation error inside the collapsed section opens it so the error is visible.
+  const detailsOpen = showDetails || DETAIL_FIELDS.some((field) => errors[field]);
 
   const set = <K extends keyof Values>(field: K, value: Values[K]) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -138,17 +171,73 @@ export function ApplicationForm({
     }
   }
 
+  const isWishlist = isEdit ? application?.stage === "WISHLIST" : values.stage === "WISHLIST";
+
+  const deadlineField = (
+    <FormField id="deadline" label="Application deadline" error={errors.deadline}>
+      <Input
+        {...fieldA11y("deadline", errors.deadline)}
+        type="date"
+        value={values.deadline}
+        onChange={(e) => set("deadline", e.target.value)}
+      />
+    </FormField>
+  );
+
   return (
     <form onSubmit={handleSubmit} noValidate className="grid gap-6">
-      <section className="grid gap-4 rounded-xl border bg-background p-4 sm:p-6">
-        <h2 className="font-medium">Job</h2>
+      {!isEdit ? (
+        <fieldset className="grid gap-2">
+          <legend className="mb-3 font-heading text-xl font-bold">
+            Where are you with this job?
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {(
+              [
+                [
+                  "APPLIED",
+                  "Already applied",
+                  "We’ll watch for a reply and nudge you to follow up.",
+                ],
+                ["WISHLIST", "Want to apply", "Save it for later and keep an eye on the deadline."],
+              ] as const
+            ).map(([stage, label, description]) => (
+              <label
+                key={stage}
+                className={cn(
+                  "flex cursor-pointer gap-3 rounded-2xl border-2 border-input bg-card p-4 text-sm transition-[border-color,box-shadow,background-color] has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
+                  values.stage === stage && "border-ink bg-primary/10 shadow-pop",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="stage"
+                  value={stage}
+                  checked={values.stage === stage}
+                  onChange={() => set("stage", stage)}
+                  className="mt-0.5 accent-primary"
+                />
+                <span className="grid gap-0.5">
+                  <span className="font-heading text-base font-bold">{label}</span>
+                  <span className="text-muted-foreground">{description}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
+
+      <section className="grid gap-5 rounded-2xl border-2 border-ink bg-card p-5 shadow-sticker sm:p-7">
+        <h2 className="font-heading text-xl font-bold">The job</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField id="company" label="Company" error={errors.company}>
             <Input
               {...fieldA11y("company", errors.company)}
               value={values.company}
               onChange={(e) => set("company", e.target.value)}
-              placeholder="Brain Station 23"
+              placeholder="e.g. Brain Station 23"
+              maxLength={120}
+              autoComplete="organization"
             />
           </FormField>
           <FormField id="title" label="Job title" error={errors.title}>
@@ -156,7 +245,8 @@ export function ApplicationForm({
               {...fieldA11y("title", errors.title)}
               value={values.title}
               onChange={(e) => set("title", e.target.value)}
-              placeholder="Junior Frontend Developer"
+              placeholder="e.g. Junior Frontend Developer"
+              maxLength={120}
             />
           </FormField>
           <FormField id="source" label="Found on" error={errors.source}>
@@ -177,137 +267,39 @@ export function ApplicationForm({
               </SelectContent>
             </Select>
           </FormField>
-          <FormField id="location" label="Location (optional)" error={errors.location}>
-            <Input
-              {...fieldA11y("location", errors.location)}
-              value={values.location}
-              onChange={(e) => set("location", e.target.value)}
-              placeholder="Dhaka (Mohakhali)"
-            />
-          </FormField>
-          <FormField id="jobUrl" label="Job post link (optional)" error={errors.jobUrl}>
-            <Input
-              {...fieldA11y("jobUrl", errors.jobUrl)}
-              type="url"
-              inputMode="url"
-              value={values.jobUrl}
-              onChange={(e) => set("jobUrl", e.target.value)}
-              placeholder="https://jobs.bdjobs.com/…"
-            />
-          </FormField>
-          <FormField id="deadline" label="Application deadline (optional)" error={errors.deadline}>
-            <Input
-              {...fieldA11y("deadline", errors.deadline)}
-              type="date"
-              value={values.deadline}
-              onChange={(e) => set("deadline", e.target.value)}
-            />
-          </FormField>
-          <FormField
-            id="salaryMin"
-            label="Salary from (BDT/month, optional)"
-            error={errors.salaryMin}
-          >
-            <Input
-              {...fieldA11y("salaryMin", errors.salaryMin)}
-              type="number"
-              min={0}
-              step={1000}
-              inputMode="numeric"
-              value={values.salaryMin}
-              onChange={(e) => set("salaryMin", e.target.value)}
-              placeholder="30000"
-            />
-          </FormField>
-          <FormField
-            id="salaryMax"
-            label="Salary to (BDT/month, optional)"
-            error={errors.salaryMax}
-          >
-            <Input
-              {...fieldA11y("salaryMax", errors.salaryMax)}
-              type="number"
-              min={0}
-              step={1000}
-              inputMode="numeric"
-              value={values.salaryMax}
-              onChange={(e) => set("salaryMax", e.target.value)}
-              placeholder="40000"
-            />
-          </FormField>
-        </div>
-
-        <FormField
-          id="jobDescription"
-          label="Job description"
-          error={errors.jobDescription}
-          hint="Paste the full post. It's used to check how well your CV matches."
-        >
-          <Textarea
-            {...fieldA11y("jobDescription", errors.jobDescription)}
-            value={values.jobDescription}
-            onChange={(e) => set("jobDescription", e.target.value)}
-            rows={8}
-            placeholder="Requirements: React, TypeScript, REST API…"
-          />
-        </FormField>
-      </section>
-
-      <section className="grid gap-4 rounded-xl border bg-background p-4 sm:p-6">
-        <h2 className="font-medium">Your application</h2>
-
-        {!isEdit ? (
-          <fieldset className="grid gap-2">
-            <legend className="mb-1.5 text-sm font-medium">Status</legend>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {(
-                [
-                  ["WISHLIST", "Want to apply", "Save it to your wishlist and track the deadline."],
-                  [
-                    "APPLIED",
-                    "Already applied",
-                    "Start tracking replies from today (or a date you set).",
-                  ],
-                ] as const
-              ).map(([stage, label, description]) => (
-                <label
-                  key={stage}
-                  className={cn(
-                    "flex cursor-pointer gap-3 rounded-lg border p-3 text-sm transition-colors has-focus-visible:ring-3 has-focus-visible:ring-ring/50",
-                    values.stage === stage && "border-primary bg-primary/5",
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="stage"
-                    value={stage}
-                    checked={values.stage === stage}
-                    onChange={() => set("stage", stage)}
-                    className="mt-0.5 accent-primary"
-                  />
-                  <span className="grid gap-0.5">
-                    <span className="font-medium">{label}</span>
-                    <span className="text-muted-foreground">{description}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </fieldset>
-        ) : null}
-
-        <div className="grid gap-4 sm:grid-cols-2">
+          {showAppliedDate ? (
+            <FormField
+              id="appliedAt"
+              label="Date applied"
+              error={errors.appliedAt}
+              hint={isEdit ? undefined : "Leave empty for today."}
+            >
+              <Input
+                {...fieldA11y("appliedAt", errors.appliedAt, !isEdit)}
+                type="date"
+                value={values.appliedAt}
+                onChange={(e) => set("appliedAt", e.target.value)}
+              />
+            </FormField>
+          ) : isWishlist ? (
+            deadlineField
+          ) : null}
           <FormField
             id="resumeId"
-            label="CV used"
+            label="CV you sent"
             error={errors.resumeId}
             hint={
               resumes.length === 0
-                ? "Add a CV on the My CVs page to enable AI matching."
+                ? "Add a CV on the My CVs page to unlock the CV match."
                 : undefined
             }
           >
             <Select value={values.resumeId} onValueChange={(v) => set("resumeId", v)}>
-              <SelectTrigger id="resumeId" className="w-full">
+              <SelectTrigger
+                id="resumeId"
+                className="w-full"
+                aria-describedby={resumes.length === 0 ? "resumeId-hint" : undefined}
+              >
                 <SelectValue>
                   {resumes.find((r) => r.id === values.resumeId)?.label ?? "No CV selected"}
                 </SelectValue>
@@ -322,40 +314,115 @@ export function ApplicationForm({
               </SelectContent>
             </Select>
           </FormField>
-
-          {showAppliedDate ? (
-            <FormField
-              id="appliedAt"
-              label="Date applied"
-              error={errors.appliedAt}
-              hint={isEdit ? undefined : "Leave empty for today."}
-            >
-              <Input
-                {...fieldA11y("appliedAt", errors.appliedAt)}
-                type="date"
-                value={values.appliedAt}
-                onChange={(e) => set("appliedAt", e.target.value)}
-              />
-            </FormField>
-          ) : null}
         </div>
 
-        <FormField id="notes" label="Notes (optional)" error={errors.notes}>
+        <FormField
+          id="jobDescription"
+          label="Job description (optional)"
+          error={errors.jobDescription}
+          hint={
+            values.jobDescription.length > JOB_DESCRIPTION_MAX_CHARS * 0.9
+              ? `${values.jobDescription.length.toLocaleString("en-IN")} of ${JOB_DESCRIPTION_MAX_CHARS.toLocaleString("en-IN")} characters. Trim the parts about the company if it is too long.`
+              : "Paste the post now or later. It unlocks the CV match."
+          }
+        >
           <Textarea
-            {...fieldA11y("notes", errors.notes)}
-            value={values.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            rows={3}
-            placeholder="Referred by a senior, HR contact: …"
+            {...fieldA11y("jobDescription", errors.jobDescription, true)}
+            value={values.jobDescription}
+            onChange={(e) => set("jobDescription", e.target.value)}
+            rows={6}
+            placeholder="e.g. Requirements: React, TypeScript, REST API…"
           />
         </FormField>
       </section>
 
+      <section className="grid rounded-2xl border-2 border-ink bg-card shadow-sticker">
+        <button
+          type="button"
+          onClick={() => setShowDetails((open) => !open)}
+          aria-expanded={detailsOpen}
+          aria-controls="more-details"
+          className="flex min-h-12 items-center justify-between gap-3 rounded-xl px-4 py-3 text-left sm:px-6"
+        >
+          <span className="grid gap-0.5">
+            <span className="font-heading text-lg font-bold">More details</span>
+            <span className="text-xs text-muted-foreground">
+              Location, salary, link{isWishlist ? "" : ", deadline"} and notes. All optional.
+            </span>
+          </span>
+          <ChevronDownIcon
+            className={cn("size-4 shrink-0 transition-transform", detailsOpen && "rotate-180")}
+            aria-hidden
+          />
+        </button>
+
+        {detailsOpen ? (
+          <div
+            id="more-details"
+            className="grid gap-4 border-t px-4 pt-4 pb-5 duration-200 animate-in fade-in motion-safe:slide-in-from-top-1 sm:px-6"
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField id="location" label="Location" error={errors.location}>
+                <Input
+                  {...fieldA11y("location", errors.location)}
+                  value={values.location}
+                  onChange={(e) => set("location", e.target.value)}
+                  placeholder="e.g. Dhaka (Mohakhali)"
+                  maxLength={120}
+                />
+              </FormField>
+              <FormField id="jobUrl" label="Job post link" error={errors.jobUrl}>
+                <Input
+                  {...fieldA11y("jobUrl", errors.jobUrl)}
+                  type="url"
+                  inputMode="url"
+                  value={values.jobUrl}
+                  onChange={(e) => set("jobUrl", e.target.value)}
+                  placeholder="e.g. https://jobs.bdjobs.com/…"
+                  maxLength={500}
+                />
+              </FormField>
+              <FormField id="salaryMin" label="Salary from (৳ per month)" error={errors.salaryMin}>
+                <Input
+                  {...fieldA11y("salaryMin", errors.salaryMin)}
+                  inputMode="numeric"
+                  value={values.salaryMin}
+                  onChange={(e) => set("salaryMin", e.target.value)}
+                  placeholder="e.g. 30,000"
+                  maxLength={14}
+                />
+              </FormField>
+              <FormField id="salaryMax" label="Salary to (৳ per month)" error={errors.salaryMax}>
+                <Input
+                  {...fieldA11y("salaryMax", errors.salaryMax)}
+                  inputMode="numeric"
+                  value={values.salaryMax}
+                  onChange={(e) => set("salaryMax", e.target.value)}
+                  placeholder="e.g. 40,000"
+                  maxLength={14}
+                />
+              </FormField>
+              {isWishlist ? null : deadlineField}
+            </div>
+            <FormField id="notes" label="Notes" error={errors.notes}>
+              <Textarea
+                {...fieldA11y("notes", errors.notes)}
+                value={values.notes}
+                onChange={(e) => set("notes", e.target.value)}
+                rows={3}
+                placeholder="e.g. Referred by a senior; HR contact is Ms. Rahman"
+                maxLength={5000}
+              />
+            </FormField>
+          </div>
+        ) : null}
+      </section>
+
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-        <Button asChild variant="outline" size="lg">
+        <Button asChild variant="outline" size="lg" className="h-10">
           <Link href={isEdit ? `/applications/${application!.id}` : "/applications"}>Cancel</Link>
         </Button>
-        <Button type="submit" size="lg" disabled={submitting}>
+        <Button type="submit" size="lg" className="h-10" disabled={submitting}>
           {submitting ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
           {submitting ? "Saving…" : isEdit ? "Save changes" : "Add application"}
         </Button>

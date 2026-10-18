@@ -12,7 +12,7 @@ type FormFieldProps = {
 /** Label + control + inline error/hint, with the ids wired for screen readers. */
 export function FormField({ id, label, error, hint, children }: FormFieldProps) {
   return (
-    <div className="grid gap-1.5">
+    <div className="grid content-start gap-1.5">
       <Label htmlFor={id}>{label}</Label>
       {children}
       {error ? (
@@ -28,12 +28,16 @@ export function FormField({ id, label, error, hint, children }: FormFieldProps) 
   );
 }
 
-/** Props to spread on an input so it is marked invalid and linked to its error text. */
-export function fieldA11y(id: string, error?: string) {
+/**
+ * Props to spread on an input: marks it invalid and links it to its error text,
+ * or to its hint (pass `hasHint`) so screen readers read the guidance too.
+ */
+export function fieldA11y(id: string, error?: string, hasHint = false) {
+  const describedBy = error ? `${id}-error` : hasHint ? `${id}-hint` : undefined;
   return {
     id,
     name: id,
     "aria-invalid": error ? true : undefined,
-    "aria-describedby": error ? `${id}-error` : undefined,
+    "aria-describedby": describedBy,
   } as const;
 }

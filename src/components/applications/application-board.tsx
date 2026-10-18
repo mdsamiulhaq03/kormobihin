@@ -1,61 +1,122 @@
 import Link from "next/link";
-import { FlagList, MatchBadge, STAGE_DOT } from "@/components/applications/badges";
+import { FlagList, MatchBadge, STAGE_DOT, StageBadge } from "@/components/applications/badges";
 import { StageMoveMenu } from "@/components/applications/stage-move-menu";
+import type { Stage } from "@/generated/prisma/enums";
 import { formatDate } from "@/lib/client/format";
 import type { ApplicationListItem } from "@/lib/client/types";
 import { STAGE_LABELS } from "@/lib/domain/labels";
-import { STAGES } from "@/lib/domain/stages";
+import { ACTIVE_STAGES } from "@/lib/domain/stages";
 import { cn } from "@/lib/utils";
 
-/** Kanban view: one column per stage. Cards move with the "Move" menu (valid stages only). */
-export function ApplicationBoard({ applications }: { applications: ApplicationListItem[] }) {
+// The two exits share one column so the whole pipeline fits on screen.
+const COLUMNS: { key: string; label: string; stages: Stage[]; dot: string }[] = [
+  { key: "wishlist", label: STAGE_LABELS.WISHLIST, stages: ["WISHLIST"], dot: STAGE_DOT.WISHLIST },
+  { key: "applied", label: STAGE_LABELS.APPLIED, stages: ["APPLIED"], dot: STAGE_DOT.APPLIED },
+  {
+    key: "shortlisted",
+    label: STAGE_LABELS.SHORTLISTED,
+    stages: ["SHORTLISTED"],
+    dot: STAGE_DOT.SHORTLISTED,
+  },
+  {
+    key: "interview",
+    label: STAGE_LABELS.INTERVIEW,
+    stages: ["INTERVIEW"],
+    dot: STAGE_DOT.INTERVIEW,
+  },
+  { key: "offer", label: STAGE_LABELS.OFFER, stages: ["OFFER"], dot: STAGE_DOT.OFFER },
+  { key: "accepted", label: STAGE_LABELS.ACCEPTED, stages: ["ACCEPTED"], dot: STAGE_DOT.ACCEPTED },
+  { key: "closed", label: "Closed", stages: ["REJECTED", "DECLINED"], dot: STAGE_DOT.DECLINED },
+];
+
+function BoardCard({ app, activeCount }: { app: ApplicationListItem; activeCount: number }) {
+  const closed = app.stage === "REJECTED" || app.stage === "DECLINED";
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6">
-      <div className="flex min-w-max gap-3">
-        {STAGES.map((stage) => {
-          const column = applications.filter((app) => app.stage === stage);
+    <article className="grid gap-2 rounded-xl border-2 border-ink bg-card p-3 shadow-pop-press">
+      <Link href={`/applications/${app.id}`} className="min-w-0 hover:text-primary">
+        <p className="line-clamp-2 font-heading leading-snug font-bold">{app.company}</p>
+        <p className="line-clamp-2 text-xs text-muted-foreground">{app.title}</p>
+      </Link>
+      {closed ? <StageBadge stage={app.stage} className="w-fit" /> : null}
+      <FlagList flags={app.flags} />
+      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+        <span className="text-xs whitespace-nowrap text-muted-foreground">
+          {app.appliedAt
+            ? `Applied ${formatDate(app.appliedAt)}`
+            : `Added ${formatDate(app.createdAt)}`}
+        </span>
+        <div className="flex items-center gap-1.5">
+          {app.matchScore != null ? (
+            <MatchBadge score={app.matchScore} label={app.matchLabel} />
+          ) : null}
+          <StageMoveMenu
+            applicationId={app.id}
+            company={app.company}
+            nextStages={app.nextStages}
+            activeCount={activeCount}
+          />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/**
+ * Kanban view. It stays on the page grid and scrolls sideways (snapping to columns)
+ * when the pipeline is wider than the screen. Columns are open dotted lanes, not
+ * cards, so the application cards are the only boxes. Empty columns shrink.
+ */
+export function ApplicationBoard({
+  applications,
+  hideClosed = false,
+}: {
+  applications: ApplicationListItem[];
+  /** "Hide closed" is on: the Closed column would always be empty, so drop it. */
+  hideClosed?: boolean;
+}) {
+  const activeCount = applications.filter((app) => ACTIVE_STAGES.includes(app.stage)).length;
+  const columns = hideClosed ? COLUMNS.filter((column) => column.key !== "closed") : COLUMNS;
+
+  return (
+    // One dotted surface for the whole board; lanes are separated by dashed rules, so the
+    // application cards are the only boxes. The right edge fades to hint that it scrolls.
+    <div className="-mx-1 snap-x snap-mandatory scroll-px-1 overflow-x-auto bg-dots px-1 pb-3 [mask-image:linear-gradient(to_right,black_calc(100%-2.5rem),transparent)]">
+      <div className="flex w-max min-w-full pr-10 lg:w-full">
+        {columns.map((column) => {
+          const cards = applications.filter((app) => column.stages.includes(app.stage));
+          const empty = cards.length === 0;
           return (
             <section
-              key={stage}
-              aria-label={`${STAGE_LABELS[stage]} (${column.length})`}
-              className="flex w-64 shrink-0 flex-col gap-2 rounded-xl bg-muted/60 p-2"
+              key={column.key}
+              aria-label={`${column.label} (${cards.length})`}
+              className={cn(
+                "flex snap-start flex-col gap-2.5 border-l-2 border-dashed border-ink/15 px-2 py-1 first:border-l-0",
+                empty ? "w-28 shrink-0" : "w-64 shrink-0 lg:w-auto lg:min-w-44 lg:flex-1",
+              )}
             >
-              <h2 className="flex items-center justify-between px-1.5 pt-1 text-sm font-medium">
-                <span className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full", STAGE_DOT[stage])} aria-hidden />
-                  {STAGE_LABELS[stage]}
-                </span>
-                <span className="text-xs text-muted-foreground tabular-nums">{column.length}</span>
-              </h2>
-
-              {column.length === 0 ? (
-                <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
-                  Empty
-                </p>
+              {empty ? (
+                <h2 className="grid gap-0.5 px-1.5 pt-1 text-sm font-bold text-muted-foreground">
+                  <span className="flex items-center gap-2">
+                    <span className={cn("size-2 shrink-0 rounded-full", column.dot)} aria-hidden />
+                    {column.label}
+                  </span>
+                  <span className="text-xs font-normal">None yet</span>
+                </h2>
               ) : (
-                column.map((app) => (
-                  <article
-                    key={app.id}
-                    className="grid gap-2 rounded-lg border bg-background p-3 shadow-xs"
-                  >
-                    <Link href={`/applications/${app.id}`} className="min-w-0 hover:text-primary">
-                      <p className="truncate text-sm font-medium">{app.company}</p>
-                      <p className="truncate text-xs text-muted-foreground">{app.title}</p>
-                    </Link>
-                    <FlagList flags={app.flags} />
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-xs whitespace-nowrap text-muted-foreground">
-                        {app.appliedAt ? formatDate(app.appliedAt) : formatDate(app.createdAt)}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        {app.matchScore != null ? (
-                          <MatchBadge score={app.matchScore} label={app.matchLabel} />
-                        ) : null}
-                        <StageMoveMenu applicationId={app.id} nextStages={app.nextStages} />
-                      </div>
-                    </div>
-                  </article>
-                ))
+                <>
+                  <h2 className="flex items-center justify-between px-1.5 pt-1 font-heading text-sm font-bold">
+                    <span className="flex items-center gap-2">
+                      <span className={cn("size-2 rounded-full", column.dot)} aria-hidden />
+                      {column.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {cards.length}
+                    </span>
+                  </h2>
+                  {cards.map((app) => (
+                    <BoardCard key={app.id} app={app} activeCount={activeCount} />
+                  ))}
+                </>
               )}
             </section>
           );

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { Stage } from "@/generated/prisma/enums";
 import {
   InvalidStageTransitionError,
   STAGES,
@@ -6,6 +7,7 @@ import {
   getNextStages,
   isTerminal,
   planStageChange,
+  reopenTarget,
 } from "@/lib/domain/stages";
 
 describe("stage transitions", () => {
@@ -80,5 +82,44 @@ describe("planStageChange", () => {
         'Can\'t move from "Rejected" to "Applied". Rejected is a final stage.',
       );
     }
+  });
+});
+
+describe("reopenTarget", () => {
+  const h = (fromStage: Stage | null, toStage: Stage) => ({ fromStage, toStage });
+
+  it("sends a rejected application back to the stage it was rejected from", () => {
+    const history = [
+      h(null, "WISHLIST"),
+      h("WISHLIST", "APPLIED"),
+      h("APPLIED", "SHORTLISTED"),
+      h("SHORTLISTED", "INTERVIEW"),
+      h("INTERVIEW", "REJECTED"),
+    ];
+    expect(reopenTarget("REJECTED", history)).toBe("INTERVIEW");
+  });
+
+  it("uses the latest closing move when it was reopened and closed again", () => {
+    const history = [
+      h("APPLIED", "REJECTED"),
+      h("REJECTED", "APPLIED"),
+      h("APPLIED", "SHORTLISTED"),
+      h("SHORTLISTED", "REJECTED"),
+    ];
+    expect(reopenTarget("REJECTED", history)).toBe("SHORTLISTED");
+  });
+
+  it("sends a declined offer back to Offer", () => {
+    expect(reopenTarget("DECLINED", [h("OFFER", "DECLINED")])).toBe("OFFER");
+  });
+
+  it("falls back to the earliest stage that can lead to the closed one when history is missing", () => {
+    expect(reopenTarget("REJECTED", [])).toBe("APPLIED");
+    expect(reopenTarget("DECLINED", [])).toBe("OFFER");
+  });
+
+  it("only reopens rejected or declined applications", () => {
+    expect(reopenTarget("ACCEPTED", [h("OFFER", "ACCEPTED")])).toBeNull();
+    expect(reopenTarget("APPLIED", [])).toBeNull();
   });
 });

@@ -31,6 +31,12 @@ const TRANSITIONS: Readonly<Record<Stage, readonly Stage[]>> = {
   DECLINED: [],
 };
 
+/** Sent and still open: the applications "in play". */
+/** Stages that end an application without a job. */
+export const CLOSED_STAGES: readonly Stage[] = ["REJECTED", "DECLINED"];
+
+export const ACTIVE_STAGES: readonly Stage[] = ["APPLIED", "SHORTLISTED", "INTERVIEW", "OFFER"];
+
 /** Stages where the employer has replied in some way (used for response-rate stats). */
 export const RESPONDED_STAGES: readonly Stage[] = [
   "SHORTLISTED",
@@ -83,4 +89,25 @@ export function planStageChange(current: StageState, to: Stage, now: Date): Stag
   }
   const appliedAt = to === "APPLIED" && !current.appliedAt ? now : current.appliedAt;
   return { fromStage: current.stage, stage: to, appliedAt };
+}
+
+// Where a reopened application goes when its history is missing: the earliest stage
+// that can lead to the closed one (only Offer can lead to Declined).
+const REOPEN_FALLBACK: Partial<Record<Stage, Stage>> = { REJECTED: "APPLIED", DECLINED: "OFFER" };
+
+/**
+ * Reopening undoes a rejection or a declined offer (for example a mis-tap). It is a
+ * separate action from the forward workflow above: the application returns to the stage
+ * it was closed from, found in its timeline (oldest entry first). Accepted stays final.
+ */
+export function reopenTarget(
+  stage: Stage,
+  history: readonly { fromStage: Stage | null; toStage: Stage }[],
+): Stage | null {
+  if (!CLOSED_STAGES.includes(stage)) return null;
+  const closingMove = history.findLast((entry) => entry.toStage === stage);
+  const previous = closingMove?.fromStage;
+  return previous && !CLOSED_STAGES.includes(previous)
+    ? previous
+    : (REOPEN_FALLBACK[stage] ?? null);
 }

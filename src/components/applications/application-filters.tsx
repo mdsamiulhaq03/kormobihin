@@ -2,7 +2,16 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { KanbanSquareIcon, ListIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
+import {
+  CheckIcon,
+  EyeOffIcon,
+  KanbanSquareIcon,
+  ListIcon,
+  Loader2Icon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+  XIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -56,11 +65,16 @@ export function ApplicationFilters({ view }: { view: "list" | "board" }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to typing
   }, [search]);
 
-  const hasFilters = ["q", "stage", "source"].some((key) => params.get(key));
+  const hasFilters = ["q", "stage", "source", "closed"].some((key) => params.get(key));
+  const hidingClosed = params.get("closed") === "hide";
+  const [showFilters, setShowFilters] = useState(false);
   const stageParam = params.get("stage") as Stage | null;
   const sourceParam = params.get("source") as JobSource | null;
   const sortParam = params.get("sort") ?? "newest";
   const sortValue = (sortParam in SORT_LABELS ? sortParam : "newest") as keyof typeof SORT_LABELS;
+  const activeFilters = [params.get("stage"), params.get("source"), params.get("sort")].filter(
+    Boolean,
+  ).length;
   // Labels are passed to SelectValue explicitly so the closed dropdown always shows text.
   const stageLabel =
     stageParam && STAGE_LABELS[stageParam] ? STAGE_LABELS[stageParam] : "All stages";
@@ -68,74 +82,135 @@ export function ApplicationFilters({ view }: { view: "list" | "board" }) {
     sourceParam && SOURCE_LABELS[sourceParam] ? SOURCE_LABELS[sourceParam] : "All sources";
 
   return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
-      <div className="relative flex-1">
-        <SearchIcon
-          className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-          aria-hidden
-        />
-        <Input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Search company, title or location"
-          aria-label="Search applications"
-          className="h-9 bg-background pl-8"
-        />
-        {pending ? (
-          <Loader2Icon
-            className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
-            aria-label="Updating"
+    <div className="grid gap-2">
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <SearchIcon
+            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+            aria-hidden
           />
-        ) : null}
+          <Input
+            type="search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Company, title or place"
+            aria-label="Search applications"
+            className="h-10 bg-background pl-8"
+          />
+          {pending ? (
+            <Loader2Icon
+              className="absolute top-1/2 right-2.5 size-4 -translate-y-1/2 animate-spin text-muted-foreground"
+              aria-label="Updating"
+            />
+          ) : null}
+        </div>
+        {/* Phones fold stage, source and sort behind one button to keep the list close. */}
+        <button
+          type="button"
+          onClick={() => setShowFilters((open) => !open)}
+          aria-expanded={showFilters}
+          aria-controls="application-filter-fields"
+          className={cn(
+            "flex h-10 shrink-0 items-center gap-1.5 rounded-full border-2 border-ink px-3 text-sm font-bold sm:hidden",
+            showFilters ? "bg-sun" : "bg-card",
+          )}
+        >
+          <SlidersHorizontalIcon className="size-4" aria-hidden />
+          Filters
+          {activeFilters > 0 ? (
+            <span className="grid size-5 place-items-center rounded-full bg-ink text-xs text-paper tabular-nums">
+              {activeFilters}
+            </span>
+          ) : null}
+        </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
-        <Select value={params.get("stage") ?? ALL} onValueChange={(stage) => update({ stage })}>
-          <SelectTrigger className="h-9 w-full bg-background sm:w-36" aria-label="Filter by stage">
-            <SelectValue>{stageLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All stages</SelectItem>
-            {STAGES.map((stage) => (
-              <SelectItem key={stage} value={stage}>
-                {STAGE_LABELS[stage]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="flex flex-wrap items-center gap-2">
+        <div
+          id="application-filter-fields"
+          className={cn(
+            "w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap",
+            showFilters ? "grid" : "hidden",
+          )}
+        >
+          <Select value={params.get("stage") ?? ALL} onValueChange={(stage) => update({ stage })}>
+            <SelectTrigger
+              className="h-10 w-full bg-background sm:w-36"
+              aria-label="Filter by stage"
+            >
+              <SelectValue>{stageLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All stages</SelectItem>
+              {STAGES.map((stage) => (
+                <SelectItem key={stage} value={stage}>
+                  {STAGE_LABELS[stage]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <Select value={params.get("source") ?? ALL} onValueChange={(source) => update({ source })}>
-          <SelectTrigger className="h-9 w-full bg-background sm:w-40" aria-label="Filter by source">
-            <SelectValue>{sourceLabel}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL}>All sources</SelectItem>
-            {Object.values(JobSource).map((source) => (
-              <SelectItem key={source} value={source}>
-                {SOURCE_LABELS[source]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={sortValue} onValueChange={(sort) => update({ sort })}>
-          <SelectTrigger
-            className="h-9 w-full bg-background sm:w-36"
-            aria-label="Sort applications"
+          <Select
+            value={params.get("source") ?? ALL}
+            onValueChange={(source) => update({ source })}
           >
-            <SelectValue>{SORT_LABELS[sortValue]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            {Object.entries(SORT_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            <SelectTrigger
+              className="h-10 w-full bg-background sm:w-40"
+              aria-label="Filter by source"
+            >
+              <SelectValue>{sourceLabel}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL}>All sources</SelectItem>
+              {Object.values(JobSource).map((source) => (
+                <SelectItem key={source} value={source}>
+                  {SOURCE_LABELS[source]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        <div className="flex rounded-lg border bg-background p-0.5" role="group" aria-label="View">
+          <Select value={sortValue} onValueChange={(sort) => update({ sort })}>
+            <SelectTrigger
+              className="h-10 w-full bg-background sm:w-36"
+              aria-label="Sort applications"
+            >
+              <SelectValue>{SORT_LABELS[sortValue]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(SORT_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Rejected and declined jobs stay in the history but can step out of the way. */}
+        <button
+          type="button"
+          onClick={() => update({ closed: hidingClosed ? null : "hide" })}
+          aria-pressed={hidingClosed}
+          className={cn(
+            "flex h-10 items-center justify-center gap-1.5 rounded-full border-2 border-ink px-3 text-sm font-bold whitespace-nowrap transition-colors",
+            hidingClosed ? "bg-ink text-paper" : "bg-card hover:bg-sun/50",
+          )}
+        >
+          {/* One name for both states; aria-pressed and the check carry "on". */}
+          {hidingClosed ? (
+            <CheckIcon className="size-4" aria-hidden />
+          ) : (
+            <EyeOffIcon className="size-4" aria-hidden />
+          )}
+          Hide closed
+        </button>
+
+        <div
+          className="flex h-10 shrink-0 gap-1 rounded-full border-2 border-ink bg-card p-1"
+          role="group"
+          aria-label="View"
+        >
           {(
             [
               ["list", ListIcon, "List"],
@@ -148,8 +223,8 @@ export function ApplicationFilters({ view }: { view: "list" | "board" }) {
               onClick={() => update({ view: value === "list" ? null : value })}
               aria-pressed={view === value}
               className={cn(
-                "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2.5 py-1 text-sm text-muted-foreground transition-colors",
-                view === value && "bg-muted font-medium text-foreground",
+                "flex min-h-8 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold whitespace-nowrap text-foreground transition-colors hover:bg-sun/50",
+                view === value && "bg-primary text-primary-foreground hover:bg-primary",
               )}
             >
               <Icon className="size-4" aria-hidden />
@@ -158,18 +233,20 @@ export function ApplicationFilters({ view }: { view: "list" | "board" }) {
           ))}
         </div>
 
-        {hasFilters ? (
-          <Button
-            variant="ghost"
-            className="h-9"
-            onClick={() => {
-              setSearch("");
-              update({ q: null, stage: null, source: null });
-            }}
-          >
-            <XIcon aria-hidden /> Clear
-          </Button>
-        ) : null}
+        {/* From sm up it always takes its space, so turning a filter on never shifts the
+            toolbar; on phones it only appears when there is something to clear. */}
+        <Button
+          variant="ghost"
+          className={cn("h-10 sm:ml-auto", !hasFilters && "hidden sm:invisible sm:inline-flex")}
+          aria-hidden={!hasFilters || undefined}
+          tabIndex={hasFilters ? undefined : -1}
+          onClick={() => {
+            setSearch("");
+            update({ q: null, stage: null, source: null, closed: null });
+          }}
+        >
+          <XIcon aria-hidden /> Clear
+        </Button>
       </div>
     </div>
   );

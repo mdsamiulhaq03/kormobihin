@@ -23,9 +23,10 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
     source: typeof params.source === "string" ? params.source : undefined,
     q: typeof params.q === "string" && params.q ? params.q : undefined,
     sort: typeof params.sort === "string" ? params.sort : undefined,
+    closed: typeof params.closed === "string" ? params.closed : undefined,
   });
   const query = parsed.success ? parsed.data : applicationListQuerySchema.parse({});
-  const isFiltered = Boolean(query.q || query.stage || query.source);
+  const isFiltered = Boolean(query.q || query.stage || query.source || query.closed);
 
   const applications = await listApplications(user.id, query);
 
@@ -55,8 +56,8 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
         ) : (
           <EmptyState
             icon={<BriefcaseIcon className="size-5" aria-hidden />}
-            title="Track your first application"
-            description="Save a job from Bdjobs, LinkedIn or anywhere else, then move it through each hiring stage."
+            title="KormoBihin means “jobless”. Let’s fix that."
+            description="Save a job from Bdjobs, LinkedIn, a Facebook group or anywhere else, then follow it from applied to offer."
             action={
               <Button asChild>
                 <Link href="/applications/new">
@@ -67,7 +68,7 @@ export default async function ApplicationsPage({ searchParams }: PageProps<"/app
           />
         )
       ) : view === "board" ? (
-        <ApplicationBoard applications={applications} />
+        <ApplicationBoard applications={applications} hideClosed={query.closed === "hide"} />
       ) : (
         <ApplicationList applications={applications} />
       )}

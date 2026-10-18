@@ -1,119 +1,142 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRightIcon, Loader2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { ArrowRightIcon, Loader2Icon, PlusIcon, RotateCcwIcon } from "lucide-react";
+import { toast } from "sonner";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+  CLOSING_STAGES,
+  StageChangeDialog,
+  stageActionLabel,
+} from "@/components/applications/stage-change-dialog";
+import { Button } from "@/components/ui/button";
 import type { Stage } from "@/generated/prisma/enums";
 import { useApiAction } from "@/hooks/use-api-action";
 import { apiRequest } from "@/lib/client/api-client";
+import { plural } from "@/lib/client/format";
 import { STAGE_LABELS } from "@/lib/domain/labels";
-
-const NEGATIVE: Stage[] = ["REJECTED", "DECLINED"];
-
-const HELP: Partial<Record<Stage, string>> = {
-  APPLIED: "Today becomes the applied date, and KormoBihin starts watching for a reply.",
-  SHORTLISTED: "The company replied and shortlisted you.",
-  INTERVIEW: "You've been invited to interview. Add the interview rounds below.",
-  OFFER: "You received an offer.",
-  ACCEPTED: "You accepted the offer. This is a final stage.",
-  REJECTED: "The company turned the application down. This is a final stage.",
-  DECLINED: "You turned the offer down. This is a final stage.",
-};
+import { CLOSED_STAGES } from "@/lib/domain/stages";
 
 /** Buttons for the allowed next stages (from the same rules the API enforces). */
-export function StageActions({
+const CLOSED_TEXT: Partial<Record<Stage, string>> = {
+  ACCEPTED: "You accepted this offer, so there are no more steps here.",
+  REJECTED: "This one didn’t work out. Its history stays in the timeline.",
+  DECLINED: "You turned this offer down. Its history stays in the timeline.",
+};
+
+/** Undo for a rejection or declined offer (e.g. a mis-tap). Low risk, so no dialog. */
+function ReopenButton({ applicationId }: { applicationId: string }) {
+  const { run, pending } = useApiAction();
+  async function reopen() {
+    const result = await run(() =>
+      apiRequest<{ stage: Stage }>(`/api/applications/${applicationId}/reopen`, { method: "POST" }),
+    );
+    if (result) toast.success(`Reopened. Back to ${STAGE_LABELS[result.stage]}.`);
+  }
+  return (
+    <Button variant="ghost" onClick={reopen} disabled={pending}>
+      {pending ? (
+        <Loader2Icon className="animate-spin" aria-hidden />
+      ) : (
+        <RotateCcwIcon aria-hidden />
+      )}
+      Reopen
+    </Button>
+  );
+}
+
+/**
+ * A closed application ends calmly and points to what is still open, never to more work
+ * here. The count is the same one "Showing open only" lists, so the numbers always agree.
+ */
+function ClosedNote({
   applicationId,
-  nextStages,
+  stage,
+  openCount,
 }: {
   applicationId: string;
-  nextStages: readonly Stage[];
+  stage: Stage;
+  openCount: number;
 }) {
-  const { run, pending } = useApiAction();
+  return (
+    <div className="grid gap-3">
+      <p className="text-sm">{CLOSED_TEXT[stage] ?? "This application is closed."}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button asChild variant="outline" className="w-fit">
+          {openCount > 0 ? (
+            <Link href="/applications?closed=hide">
+              See your {plural(openCount, "open application")}
+            </Link>
+          ) : (
+            <Link href="/applications/new">
+              <PlusIcon aria-hidden /> Add an application
+            </Link>
+          )}
+        </Button>
+        {CLOSED_STAGES.includes(stage) ? <ReopenButton applicationId={applicationId} /> : null}
+      </div>
+    </div>
+  );
+}
+
+export function StageActions({
+  applicationId,
+  company,
+  stage,
+  openCount,
+  nextStages,
+  activeCount,
+}: {
+  applicationId: string;
+  company: string;
+  stage: Stage;
+  /** Applications not rejected or declined: what "Showing open only" lists. */
+  openCount: number;
+  nextStages: readonly Stage[];
+  activeCount: number;
+}) {
   const [target, setTarget] = useState<Stage | null>(null);
-  const [note, setNote] = useState("");
 
   if (nextStages.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">This application is closed. No further moves.</p>
-    );
+    return <ClosedNote applicationId={applicationId} stage={stage} openCount={openCount} />;
   }
 
-  async function confirm() {
-    if (!target) return;
-    const result = await run(
-      () =>
-        apiRequest(`/api/applications/${applicationId}/stage`, {
-          method: "POST",
-          body: { stage: target, note },
-        }),
-      { successMessage: `Moved to ${STAGE_LABELS[target]}` },
-    );
-    if (result) {
-      setTarget(null);
-      setNote("");
-    }
-  }
+  const forward = nextStages.filter((stage) => !CLOSING_STAGES.includes(stage));
+  const closing = nextStages.filter((stage) => CLOSING_STAGES.includes(stage));
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        {nextStages.map((stage) => (
-          <Button
-            key={stage}
-            variant={NEGATIVE.includes(stage) ? "outline" : "default"}
-            className={
-              NEGATIVE.includes(stage) ? "text-destructive hover:text-destructive" : undefined
-            }
-            onClick={() => setTarget(stage)}
-          >
-            {NEGATIVE.includes(stage) ? null : <ArrowRightIcon aria-hidden />}
-            {stage === "REJECTED" ? "Mark as rejected" : `Move to ${STAGE_LABELS[stage]}`}
+      {/* Moving forward is the main action; closing moves sit apart and quieter, so a
+          mis-tap on "Mark as rejected" is unlikely. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-3">
+        {forward.map((stage) => (
+          <Button key={stage} onClick={() => setTarget(stage)}>
+            <ArrowRightIcon aria-hidden />
+            {stageActionLabel(stage)}
           </Button>
         ))}
-      </div>
-
-      <Dialog open={target !== null} onOpenChange={(open) => !open && !pending && setTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Move to {target ? STAGE_LABELS[target] : ""}?</DialogTitle>
-            <DialogDescription>{target ? HELP[target] : null}</DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-1.5">
-            <Label htmlFor="stage-note">Note (optional)</Label>
-            <Textarea
-              id="stage-note"
-              value={note}
-              maxLength={500}
-              onChange={(event) => setNote(event.target.value)}
-              placeholder="e.g. HR called, written test on Sunday"
-              rows={3}
-            />
+        {closing.length > 0 ? (
+          <div className="flex flex-wrap gap-1 sm:ml-auto">
+            {closing.map((stage) => (
+              <Button
+                key={stage}
+                variant="ghost"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setTarget(stage)}
+              >
+                {stageActionLabel(stage)}
+              </Button>
+            ))}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTarget(null)} disabled={pending}>
-              Cancel
-            </Button>
-            <Button
-              onClick={confirm}
-              disabled={pending}
-              variant={target && NEGATIVE.includes(target) ? "destructive" : "default"}
-            >
-              {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Confirm
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        ) : null}
+      </div>
+      <StageChangeDialog
+        applicationId={applicationId}
+        company={company}
+        target={target}
+        activeCount={activeCount}
+        onClose={() => setTarget(null)}
+      />
     </>
   );
 }

@@ -17,7 +17,7 @@ export function StageTimeline({ history }: { history: ApplicationDetail["history
             )}
             aria-hidden
           />
-          <p className="text-sm font-medium">
+          <p className="text-sm font-bold">
             {index === 0
               ? `Added as ${STAGE_LABELS[entry.toStage]}`
               : `Moved to ${STAGE_LABELS[entry.toStage]}`}

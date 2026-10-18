@@ -2,9 +2,11 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import type { InterviewType } from "../src/generated/prisma/enums";
 import {
   APPLICATIONS,
   DEMO_USER,
+  MATCH_RESULTS,
   OTHER_USER,
   OTHER_USER_APPLICATION,
   RESUMES,
@@ -19,7 +21,43 @@ if (!connectionString) {
 const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const daysFromNow = (days: number) => new Date(Date.now() + days * DAY_MS);
+const DHAKA_OFFSET_HOURS = 6; // Asia/Dhaka is UTC+6 all year (no daylight saving)
+
+/**
+ * A date `days` from today at a fixed Dhaka wall-clock time, so seeded events look
+ * real ("10:30 am") instead of all sharing the time the seed happened to run.
+ */
+function dhakaDate(days: number, hour: number, minute = 0): Date {
+  const shifted = new Date(Date.now() + days * DAY_MS + DHAKA_OFFSET_HOURS * 60 * 60 * 1000);
+  return new Date(
+    Date.UTC(
+      shifted.getUTCFullYear(),
+      shifted.getUTCMonth(),
+      shifted.getUTCDate(),
+      hour - DHAKA_OFFSET_HOURS,
+      minute,
+    ),
+  );
+}
+
+// Office-hour times that vary between events.
+const EVENT_TIMES: [number, number][] = [
+  [9, 40],
+  [11, 15],
+  [14, 20],
+  [16, 5],
+  [12, 30],
+  [17, 45],
+];
+
+const INTERVIEW_TIMES: Record<InterviewType, [number, number]> = {
+  WRITTEN: [10, 0],
+  VIVA: [11, 30],
+  TECHNICAL: [15, 0],
+  HR: [16, 30],
+  PHONE: [12, 0],
+  OTHER: [14, 0],
+};
 
 async function createUser(user: { name: string; email: string; password: string }) {
   // Re-running the seed replaces the demo accounts; cascade deletes their data.
@@ -37,10 +75,15 @@ async function createApplication(
   userId: string,
   app: SeedApplication,
   resumeIds: Record<string, string>,
+  index: number,
 ) {
   const path = app.history.path;
-  const stageDates = path.map((_, i) => daysFromNow(-app.createdDaysAgo + i * app.stepDays));
+  const stageDates = path.map((_, i) => {
+    const [hour, minute] = EVENT_TIMES[(index + i) % EVENT_TIMES.length];
+    return dhakaDate(-app.createdDaysAgo + i * app.stepDays, hour, minute);
+  });
   const appliedIndex = path.indexOf("APPLIED");
+  const match = MATCH_RESULTS[app.company];
 
   return prisma.application.create({
     data: {
@@ -55,10 +98,21 @@ async function createApplication(
       jobUrl: app.jobUrl,
       jobDescription: app.jobDescription,
       notes: app.notes,
-      deadline: app.deadlineInDays === undefined ? null : daysFromNow(app.deadlineInDays),
+      // Deadlines close at the end of the day, Dhaka time.
+      deadline: app.deadlineInDays === undefined ? null : dhakaDate(app.deadlineInDays, 23, 59),
       appliedAt: appliedIndex >= 0 ? stageDates[appliedIndex] : null,
       stage: path[path.length - 1],
       createdAt: stageDates[0],
+      ...(match
+        ? {
+            matchScore: match.score,
+            matchLabel: match.score >= 75 ? "Strong" : match.score >= 50 ? "Moderate" : "Weak",
+            matchedSkills: match.matchedSkills,
+            missingSkills: match.missingSkills,
+            matchTips: match.tips,
+            matchedAt: dhakaDate(-1, 21, 10),
+          }
+        : {}),
       history: {
         create: path.map((stage, i) => ({
           fromStage: i === 0 ? null : path[i - 1],
@@ -67,13 +121,16 @@ async function createApplication(
         })),
       },
       interviews: {
-        create: (app.interviews ?? []).map((interview) => ({
-          round: interview.round,
-          scheduledAt: daysFromNow(interview.inDays),
-          type: interview.type,
-          outcome: interview.outcome,
-          notes: interview.notes,
-        })),
+        create: (app.interviews ?? []).map((interview) => {
+          const [hour, minute] = INTERVIEW_TIMES[interview.type];
+          return {
+            round: interview.round,
+            scheduledAt: dhakaDate(interview.inDays, hour, minute),
+            type: interview.type,
+            outcome: interview.outcome,
+            notes: interview.notes,
+          };
+        }),
       },
     },
   });
@@ -88,12 +145,12 @@ async function main() {
     resumeIds[key] = created.id;
   }
 
-  for (const app of APPLICATIONS) {
-    await createApplication(demo.id, app, resumeIds);
+  for (const [index, app] of APPLICATIONS.entries()) {
+    await createApplication(demo.id, app, resumeIds, index);
   }
 
   const other = await createUser(OTHER_USER);
-  await createApplication(other.id, OTHER_USER_APPLICATION, {});
+  await createApplication(other.id, OTHER_USER_APPLICATION, {}, 0);
 
   console.info(
     `Seeded ${APPLICATIONS.length} applications for ${DEMO_USER.email} and 1 for ${OTHER_USER.email}.`,

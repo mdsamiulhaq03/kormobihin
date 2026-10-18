@@ -278,3 +278,53 @@ export const OTHER_USER_APPLICATION: SeedApplication = {
   createdDaysAgo: 5,
   stepDays: 1,
 };
+
+/**
+ * Real results returned by the AI match (openai/gpt-oss-120b on Groq) for these demo
+ * applications, stored so the demo shows them even before anyone clicks "Check match".
+ */
+export const MATCH_RESULTS: Record<
+  string,
+  { score: number; matchedSkills: string[]; missingSkills: string[]; tips: string[] }
+> = {
+  "Brain Station 23": {
+    score: 90,
+    matchedSkills: [
+      "JavaScript",
+      "React",
+      "HTML",
+      "CSS",
+      "REST API",
+      "TypeScript",
+      "Next.js",
+      "Tailwind CSS",
+      "Git",
+    ],
+    missingSkills: ["Jest"],
+    tips: [
+      "Add any experience or coursework with Jest or unit testing to the CV",
+      "Quantify your 3-month internship (e.g. pages built, bugs fixed)",
+      "Add a short Testing section listing the tools you are learning",
+    ],
+  },
+  Pathao: {
+    score: 85,
+    matchedSkills: ["React", "JavaScript", "CSS", "Next.js"],
+    missingSkills: ["GraphQL", "Storybook"],
+    tips: [
+      "Add any GraphQL projects or coursework to demonstrate familiarity",
+      "Include any experience using Storybook or similar component libraries",
+      "Quantify your internship impact (e.g. number of pages built or performance improvements)",
+    ],
+  },
+  "Therap (BD) Ltd.": {
+    score: 30,
+    matchedSkills: ["JavaScript"],
+    missingSkills: ["Java", "Spring Boot", "Hibernate", "MySQL", "OOP", "Design patterns"],
+    tips: [
+      "Add Java/Spring Boot projects or coursework to demonstrate backend skills",
+      "Show concrete examples of OOP concepts or design patterns you have used",
+      "Include any experience with databases (e.g. MySQL) or ORM tools like Hibernate",
+    ],
+  },
+};

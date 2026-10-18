@@ -2,8 +2,14 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { getFlags } from "@/lib/domain/flags";
-import { getNextStages, planStageChange } from "@/lib/domain/stages";
-import { ConflictError, NotFoundError } from "@/lib/errors";
+import {
+  ACTIVE_STAGES,
+  CLOSED_STAGES,
+  getNextStages,
+  planStageChange,
+  reopenTarget,
+} from "@/lib/domain/stages";
+import { AppError, ConflictError, NotFoundError } from "@/lib/errors";
 import { CLEARED_MATCH, assertResumeOwned } from "@/lib/services/resumes";
 import type {
   ApplicationCreateInput,
@@ -34,7 +40,8 @@ export async function listApplications(
 ) {
   const where: Prisma.ApplicationWhereInput = {
     userId,
-    stage: query.stage,
+    // An explicit stage filter wins over "hide closed".
+    stage: query.stage ?? (query.closed === "hide" ? { notIn: [...CLOSED_STAGES] } : undefined),
     source: query.source,
     ...(query.q
       ? {
@@ -185,4 +192,56 @@ export async function changeStage(
   });
 
   return getApplication(userId, id, now);
+}
+
+/**
+ * Undoes a rejection or a declined offer: the application goes back to the stage it was
+ * closed from, and the timeline records the reopening.
+ */
+export async function reopenApplication(userId: string, id: string, now = new Date()) {
+  const current = await findOwnedApplication(userId, id);
+  const history = await prisma.stageHistory.findMany({
+    where: { applicationId: id },
+    orderBy: [{ changedAt: "asc" }, { id: "asc" }],
+    select: { fromStage: true, toStage: true },
+  });
+  const target = reopenTarget(current.stage, history);
+  if (!target) {
+    throw new AppError(422, "Only rejected or declined applications can be reopened.");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const { count } = await tx.application.updateMany({
+      where: { id, userId, stage: current.stage },
+      data: { stage: target },
+    });
+    if (count === 0) {
+      throw new ConflictError("This application was changed elsewhere. Refresh and try again.");
+    }
+    await tx.stageHistory.create({
+      data: {
+        applicationId: id,
+        fromStage: current.stage,
+        toStage: target,
+        note: "Reopened",
+        changedAt: now,
+      },
+    });
+  });
+
+  return getApplication(userId, id, now);
+}
+
+/** Applications not rejected or declined: the same set "Showing open only" lists. */
+export function countOpenApplications(userId: string) {
+  return prisma.application.count({
+    where: { userId, stage: { notIn: [...CLOSED_STAGES] } },
+  });
+}
+
+/** How many applications are sent and still open ("in play"). */
+export function countActiveApplications(userId: string) {
+  return prisma.application.count({
+    where: { userId, stage: { in: [...ACTIVE_STAGES] } },
+  });
 }

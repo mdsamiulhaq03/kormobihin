@@ -22,19 +22,27 @@ const dateTimeFormatter = new Intl.DateTimeFormat("en-GB", {
 
 const toDate = (value: Date | string) => (value instanceof Date ? value : new Date(value));
 
+// en-GB writes September as "Sept"; every other month has three letters.
+const threeLetterMonth = (text: string) => text.replace(/\bSept\b/, "Sep");
+
 /** 16 Oct 2026 */
 export function formatDate(value: Date | string | null | undefined): string {
-  return value ? dateFormatter.format(toDate(value)) : "—";
+  return value ? threeLetterMonth(dateFormatter.format(toDate(value))) : "—";
 }
 
 /** 16 Oct, 3:30 pm */
 export function formatDateTime(value: Date | string | null | undefined): string {
-  return value ? dateTimeFormatter.format(toDate(value)) : "—";
+  return value ? threeLetterMonth(dateTimeFormatter.format(toDate(value))) : "—";
 }
 
 /** "today", "in 3 days", "5 days ago" */
+const DHAKA_OFFSET_MS = 6 * 60 * 60 * 1000; // Asia/Dhaka is UTC+6 all year
+
+/** Calendar day number in Dhaka, so "yesterday" means the previous date, not "24 hours ago". */
+const dhakaDay = (date: Date) => Math.floor((date.getTime() + DHAKA_OFFSET_MS) / DAY_MS);
+
 export function formatRelativeDays(value: Date | string, now: Date = new Date()): string {
-  const days = Math.round((toDate(value).getTime() - now.getTime()) / DAY_MS);
+  const days = dhakaDay(toDate(value)) - dhakaDay(now);
   if (days === 0) return "today";
   if (days === 1) return "tomorrow";
   if (days === -1) return "yesterday";
@@ -63,4 +71,23 @@ export function toDateTimeInputValue(value: Date | string | null | undefined): s
   const date = toDate(value);
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+/** "1 job", "3 jobs"; pass the plural when it isn't just +s ("1 company", "2 companies"). */
+export function plural(count: number, singular: string, pluralForm = `${singular}s`): string {
+  return `${count} ${count === 1 ? singular : pluralForm}`;
+}
+
+const dayMonthFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: TIME_ZONE,
+});
+
+/** { day: "20", month: "Oct" } in Dhaka time, for date anchors. */
+export function formatDayMonth(value: Date | string): { day: string; month: string } {
+  const parts = dayMonthFormatter.formatToParts(toDate(value));
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return { day: part("day"), month: threeLetterMonth(part("month")) };
 }
