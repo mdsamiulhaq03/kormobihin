@@ -54,7 +54,7 @@ export async function apiRequest<T>(url: string, options: RequestOptions = {}): 
     throw new ApiClientError(
       response.status >= 500
         ? "The server had a problem. Please try again in a moment."
-        : "Unexpected response from the server.",
+        : "The server sent a reply we couldn't read. Please try again.",
       response.status,
     );
   }

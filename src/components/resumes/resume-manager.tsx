@@ -132,7 +132,7 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
             <DialogDescription>
               {deleting && deleting.applicationCount > 0
                 ? `${plural(deleting.applicationCount, "application uses", "applications use")} this CV. They will be kept, but without a CV linked, so their match can't be re-checked until you choose another.`
-                : "This CV isn't linked to any application."}
+                : "It isn't linked to any application. This can't be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -141,7 +141,7 @@ export function ResumeManager({ resumes }: { resumes: ResumeListItem[] }) {
             </Button>
             <Button variant="destructive" onClick={remove} disabled={pending}>
               {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Delete
+              Delete CV
             </Button>
           </DialogFooter>
         </DialogContent>

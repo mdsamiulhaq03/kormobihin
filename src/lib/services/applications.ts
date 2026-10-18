@@ -232,7 +232,7 @@ export async function reopenApplication(userId: string, id: string, now = new Da
   return getApplication(userId, id, now);
 }
 
-/** Applications not rejected or declined: the same set "Showing open only" lists. */
+/** Applications not rejected or declined: the same set "Hide closed" lists. */
 export function countOpenApplications(userId: string) {
   return prisma.application.count({
     where: { userId, stage: { notIn: [...CLOSED_STAGES] } },

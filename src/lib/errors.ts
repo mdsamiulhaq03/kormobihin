@@ -32,7 +32,10 @@ export class UnauthorizedError extends AppError {
 
 export class NotFoundError extends AppError {
   constructor(resource = "Resource") {
-    super(404, `${resource} not found.`);
+    super(
+      404,
+      `This ${resource === "CV" ? "CV" : resource.toLowerCase()} doesn't exist or was deleted.`,
+    );
     this.name = "NotFoundError";
   }
 }

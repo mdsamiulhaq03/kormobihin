@@ -47,7 +47,7 @@ function ReopenButton({ applicationId }: { applicationId: string }) {
 
 /**
  * A closed application ends calmly and points to what is still open, never to more work
- * here. The count is the same one "Showing open only" lists, so the numbers always agree.
+ * here. The count is the same one "Hide closed" lists, so the numbers always agree.
  */
 function ClosedNote({
   applicationId,
@@ -90,7 +90,7 @@ export function StageActions({
   applicationId: string;
   company: string;
   stage: Stage;
-  /** Applications not rejected or declined: what "Showing open only" lists. */
+  /** Applications not rejected or declined: what "Hide closed" lists. */
   openCount: number;
   nextStages: readonly Stage[];
   activeCount: number;

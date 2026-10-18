@@ -43,7 +43,11 @@ export function ResumeDialog({ mode, onClose }: { mode: ResumeDialogMode; onClos
       .then((resume) => setContent(resume.content))
       .catch((error) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        toast.error("Couldn't load this CV.");
+        toast.error(
+          error instanceof ApiClientError
+            ? error.message
+            : "Couldn't load this CV. Check your connection and try again.",
+        );
         onClose();
       })
       .finally(() => setLoadingContent(false));

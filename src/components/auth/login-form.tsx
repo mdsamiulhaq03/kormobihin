@@ -49,7 +49,7 @@ export function LoginForm({ redirectTo, prefillDemo = false }: LoginFormProps) {
         method: "POST",
         body: parsed.data,
       });
-      toast.success(`Welcome back, ${user.name.split(" ")[0]}!`);
+      if (redirectTo !== "/dashboard") toast.success(`Welcome back, ${user.name.split(" ")[0]}!`);
       router.replace(redirectTo);
       router.refresh();
     } catch (error) {

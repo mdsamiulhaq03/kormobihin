@@ -113,7 +113,7 @@ export function InterviewSection({
             : `/api/applications/${applicationId}/interviews/${(editing as Interview).id}`,
           { method: isNew ? "POST" : "PATCH", body: payload },
         ),
-      { successMessage: isNew ? "Interview added." : "Interview updated." },
+      { successMessage: isNew ? "Round added." : "Round updated." },
     );
     if (result) setEditing(null);
   }
@@ -125,7 +125,7 @@ export function InterviewSection({
         apiRequest(`/api/applications/${applicationId}/interviews/${deleting.id}`, {
           method: "DELETE",
         }),
-      { successMessage: "Interview removed." },
+      { successMessage: "Round deleted." },
     );
     if (result) setDeleting(null);
   }
@@ -310,7 +310,7 @@ export function InterviewSection({
             <DialogTitle>Delete round {deleting?.round}?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            This removes the interview record. It can&apos;t be undone.
+            The round and its notes are removed for good. This can&apos;t be undone.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleting(null)} disabled={pending}>
@@ -318,7 +318,7 @@ export function InterviewSection({
             </Button>
             <Button variant="destructive" onClick={remove} disabled={pending}>
               {pending ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
-              Delete
+              Delete round
             </Button>
           </DialogFooter>
         </DialogContent>
