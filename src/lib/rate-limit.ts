@@ -33,11 +33,6 @@ export function checkRateLimit(
   buckets.set(key, { timestamps: [...recent, now] });
 }
 
-/** Clears all counters. Used by tests. */
-export function resetRateLimits() {
-  buckets.clear();
-}
-
 /** Best-effort client IP from proxy headers (Vercel sets x-forwarded-for). */
 export function getClientIp(request: Request): string {
   const forwarded = request.headers.get("x-forwarded-for");
