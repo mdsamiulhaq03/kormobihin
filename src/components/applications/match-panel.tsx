@@ -244,7 +244,7 @@ export function MatchPanel({ application }: { application: ApplicationDetail }) 
               <h3 className="text-base font-bold">How to improve</h3>
               <ul className="grid gap-2">
                 {application.matchTips.map((tip) => (
-                  <li key={tip} className="flex gap-2 text-sm">
+                  <li key={tip} className="flex gap-2 text-base leading-relaxed">
                     <LightbulbIcon className="mt-0.5 size-4 shrink-0 text-amber-500" aria-hidden />
                     {tip}
                   </li>

@@ -123,7 +123,7 @@ export function UpNextCard({ items, now }: { items: UpNextItem[]; now: Date }) {
     <Card className="h-full shadow-sticker-pink">
       <CardHeader>
         <CardTitle>
-          <h2 className="text-2xl font-extrabold">Up next</h2>
+          <h2>Up next</h2>
         </CardTitle>
         <CardDescription>
           {/* Says when items appear, so the flags never feel arbitrary. */}

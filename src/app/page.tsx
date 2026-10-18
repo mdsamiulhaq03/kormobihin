@@ -327,17 +327,6 @@ export default async function Home() {
                   <Link href="/login?demo=1">Try the demo</Link>
                 </Button>
               </div>
-              <p className="w-fit max-w-sm rounded-[1.25rem_1.25rem_1.25rem_0.25rem] border-2 border-ink bg-card px-4 py-2.5 text-sm shadow-pop">
-                {/* A drawn strike: the browser line-through sits on the Bengali headline
-                    bar (matra) and reads as a rendering glitch. */}
-                <span
-                  lang="bn"
-                  className="relative inline-block font-(family-name:--font-bangla) text-lg font-bold after:absolute after:inset-x-[-2px] after:top-[60%] after:h-[3px] after:-rotate-6 after:rounded-full after:bg-pink"
-                >
-                  কর্মহীন
-                </span>{" "}
-                (KormoBihin) means “jobless” in Bangla. Let’s fix that.
-              </p>
             </div>
 
             <div className="relative">
@@ -403,24 +392,6 @@ export default async function Home() {
                 ))}
               </ul>
             </div>
-          </div>
-        </section>
-
-        <section className="px-4 pb-20 sm:px-6 lg:pb-28">
-          <div className="relative mx-auto flex w-full max-w-6xl flex-col gap-6 overflow-hidden rounded-[2rem] border-2 border-ink bg-primary px-6 py-12 text-primary-foreground shadow-pop sm:flex-row sm:items-center sm:justify-between sm:px-12">
-            <div aria-hidden className="bg-dots-light absolute inset-y-0 right-0 w-1/2" />
-            <Confetti>
-              <Dot tone="sun" className="absolute -top-10 right-1/3 size-24" />
-              <Triangle tone="pink" className="absolute right-10 bottom-4 size-10 rotate-12" />
-            </Confetti>
-            <p className="relative max-w-[22ch] font-heading text-3xl leading-tight font-extrabold tracking-tight text-balance sm:text-4xl">
-              Not ready to sign up? Look around the demo first.
-            </p>
-            <Button asChild size="lg" variant="outline" className="relative h-14 px-7 text-base">
-              <Link href="/login?demo=1">
-                Try the demo <ArrowRightIcon aria-hidden />
-              </Link>
-            </Button>
           </div>
         </section>
       </main>

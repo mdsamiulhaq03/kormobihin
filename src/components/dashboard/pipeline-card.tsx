@@ -20,7 +20,7 @@ export function PipelineCard({
     <Card className="h-full">
       <CardHeader>
         <CardTitle>
-          <h2 className="text-2xl font-extrabold">Pipeline</h2>
+          <h2>Pipeline</h2>
         </CardTitle>
         <CardDescription>Where your {plural(total, "application")} are right now.</CardDescription>
       </CardHeader>

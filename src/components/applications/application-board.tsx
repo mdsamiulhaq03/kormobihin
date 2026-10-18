@@ -1,3 +1,4 @@
+import { ViewTransition } from "react";
 import Link from "next/link";
 import { FlagList, MatchBadge, STAGE_DOT, StageBadge } from "@/components/applications/badges";
 import { StageMoveMenu } from "@/components/applications/stage-move-menu";
@@ -32,32 +33,36 @@ const COLUMNS: { key: string; label: string; stages: Stage[]; dot: string }[] = 
 function BoardCard({ app, activeCount }: { app: ApplicationListItem; activeCount: number }) {
   const closed = app.stage === "REJECTED" || app.stage === "DECLINED";
   return (
-    <article className="grid gap-2 rounded-xl border-2 border-ink bg-card p-3 shadow-pop-press">
-      <Link href={`/applications/${app.id}`} className="min-w-0 hover:text-primary">
-        <p className="line-clamp-2 font-heading leading-snug font-bold">{app.company}</p>
-        <p className="line-clamp-2 text-xs text-muted-foreground">{app.title}</p>
-      </Link>
-      {closed ? <StageBadge stage={app.stage} className="w-fit" /> : null}
-      <FlagList flags={app.flags} />
-      <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
-        <span className="text-xs whitespace-nowrap text-muted-foreground">
-          {app.appliedAt
-            ? `Applied ${formatDate(app.appliedAt)}`
-            : `Added ${formatDate(app.createdAt)}`}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {app.matchScore != null ? (
-            <MatchBadge score={app.matchScore} label={app.matchLabel} />
-          ) : null}
-          <StageMoveMenu
-            applicationId={app.id}
-            company={app.company}
-            nextStages={app.nextStages}
-            activeCount={activeCount}
-          />
+    // A stable name per application: when a stage changes, React's view transition flies
+    // this card from its old lane to the new one and slides its neighbours into place.
+    <ViewTransition name={`application-${app.id}`} share="card-move" default="none">
+      <article className="grid gap-2 rounded-xl border-2 border-ink bg-card p-3 shadow-pop-press">
+        <Link href={`/applications/${app.id}`} className="min-w-0 hover:text-primary">
+          <p className="line-clamp-2 font-heading leading-snug font-bold">{app.company}</p>
+          <p className="line-clamp-2 text-xs text-muted-foreground">{app.title}</p>
+        </Link>
+        {closed ? <StageBadge stage={app.stage} className="w-fit" /> : null}
+        <FlagList flags={app.flags} />
+        <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5">
+          <span className="text-xs whitespace-nowrap text-muted-foreground">
+            {app.appliedAt
+              ? `Applied ${formatDate(app.appliedAt)}`
+              : `Added ${formatDate(app.createdAt)}`}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {app.matchScore != null ? (
+              <MatchBadge score={app.matchScore} label={app.matchLabel} />
+            ) : null}
+            <StageMoveMenu
+              applicationId={app.id}
+              company={app.company}
+              nextStages={app.nextStages}
+              activeCount={activeCount}
+            />
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
+    </ViewTransition>
   );
 }
 
@@ -110,7 +115,9 @@ export function ApplicationBoard({
                       {column.label}
                     </span>
                     <span className="text-xs text-muted-foreground tabular-nums">
-                      {cards.length}
+                      <ViewTransition update="count-tick" default="none">
+                        <span className="inline-block">{cards.length}</span>
+                      </ViewTransition>
                     </span>
                   </h2>
                   {cards.map((app) => (

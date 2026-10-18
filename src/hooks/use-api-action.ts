@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { startTransition, useCallback, useState } from "react";
 import { toast } from "sonner";
 import { ApiClientError } from "@/lib/client/api-client";
 
@@ -26,7 +26,8 @@ export function useApiAction() {
       try {
         const result = await action();
         if (options.successMessage) toast.success(options.successMessage);
-        if (options.refresh !== false) router.refresh();
+        // As a transition, so <ViewTransition> elements animate the change (e.g. board cards).
+        if (options.refresh !== false) startTransition(() => router.refresh());
         return result;
       } catch (error) {
         const message =

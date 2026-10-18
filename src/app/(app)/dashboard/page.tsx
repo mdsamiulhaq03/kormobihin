@@ -75,7 +75,7 @@ export default async function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            <h2 className="text-2xl font-extrabold">Where replies come from</h2>
+            <h2>Where replies come from</h2>
           </CardTitle>
           <CardDescription>
             {stats.bySource.length === 0

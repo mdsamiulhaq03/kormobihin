@@ -9,7 +9,7 @@ export default function AppNotFound() {
         <SearchXIcon className="size-5" aria-hidden />
       </div>
       <div className="grid gap-1">
-        <h2 className="text-lg font-semibold">Not found</h2>
+        <h2 className="text-xl leading-tight font-extrabold tracking-tight">Not found</h2>
         <p className="max-w-sm text-sm text-muted-foreground">
           This item doesn&apos;t exist or isn&apos;t yours.
         </p>

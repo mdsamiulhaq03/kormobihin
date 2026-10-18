@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   partialPrefetching: false,
   // Keep PDF parsing out of the bundle; it runs in the Node.js runtime only.
   serverExternalPackages: ["unpdf"],
+  // The dev-only "N" badge sits bottom-left, right on the phone tab bar's Dashboard tab.
+  // Error overlays still appear in development.
+  devIndicators: false,
   turbopack: {
     rules: {
       "*.css": {

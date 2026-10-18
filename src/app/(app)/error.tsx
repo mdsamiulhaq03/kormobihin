@@ -16,7 +16,9 @@ export default function AppError({
         <TriangleAlertIcon className="size-5" aria-hidden />
       </div>
       <div className="grid gap-1">
-        <h2 className="text-lg font-semibold">Couldn&apos;t load this page</h2>
+        <h2 className="text-xl leading-tight font-extrabold tracking-tight">
+          Couldn&apos;t load this page
+        </h2>
         <p className="max-w-sm text-sm text-muted-foreground">
           Something went wrong while loading your data. Check your connection and try again.
         </p>

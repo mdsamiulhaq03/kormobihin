@@ -228,7 +228,9 @@ export function ApplicationForm({
       ) : null}
 
       <section className="grid gap-5 rounded-2xl border-2 border-ink bg-card p-5 shadow-sticker sm:p-7">
-        <h2 className="font-heading text-xl font-bold">The job</h2>
+        <h2 className="font-heading text-xl leading-tight font-extrabold tracking-tight">
+          The job
+        </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField id="company" label="Company" error={errors.company}>
             <Input

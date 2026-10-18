@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Hind_Siliguri, Outfit, Plus_Jakarta_Sans } from "next/font/google";
+import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import "./globals.css";
+import "./view-transitions.css";
 
 // Outfit: geometric, rounded headings. Plus Jakarta Sans: legible body text. Both are
 // variable fonts, so one file each covers every weight. Code/CV text uses a system mono.
@@ -15,15 +16,6 @@ const display = Outfit({
 const body = Plus_Jakarta_Sans({
   variable: "--font-body",
   subsets: ["latin"],
-  display: "swap",
-});
-
-// Bangla text (lang="bn") gets a real Bengali face instead of a system fallback.
-// Bengali subset only, so Latin pages download nothing extra.
-const bangla = Hind_Siliguri({
-  variable: "--font-bangla",
-  subsets: ["bengali"],
-  weight: ["600", "700"],
   display: "swap",
 });
 
@@ -41,10 +33,7 @@ export const viewport: Viewport = { viewportFit: "cover" };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${display.variable} ${body.variable} ${bangla.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${display.variable} ${body.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
         <TooltipProvider>{children}</TooltipProvider>
         {/* On phones toasts drop below the sticky header instead of covering Log out. */}

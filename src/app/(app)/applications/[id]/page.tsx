@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { ViewTransition, type ReactNode } from "react";
 import { ArrowLeftIcon, CalendarClockIcon, ExternalLinkIcon, PencilIcon } from "lucide-react";
 import { FlagList, StageBadge } from "@/components/applications/badges";
 import { DeleteApplicationButton } from "@/components/applications/delete-application-button";
@@ -62,8 +62,15 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
       <div className="flex items-start justify-between gap-4">
         <div className="grid min-w-0 gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-3xl font-semibold tracking-[-0.025em]">{app.company}</h1>
-            <StageBadge stage={app.stage} />
+            <h1 className="text-3xl font-extrabold tracking-tight text-balance sm:text-4xl">
+              {app.company}
+            </h1>
+            {/* Pops to the new stage when it changes (view transition on refresh). */}
+            <ViewTransition update="stage-pop" default="none">
+              <span className="inline-flex">
+                <StageBadge stage={app.stage} />
+              </span>
+            </ViewTransition>
           </div>
           <p className="text-muted-foreground">{app.title}</p>
           <FlagList flags={app.flags} />
@@ -134,7 +141,7 @@ export default async function ApplicationPage({ params }: PageProps<"/applicatio
               {app.jobDescription.trim() ? (
                 <p
                   dir="auto"
-                  className="max-w-[70ch] text-sm leading-relaxed whitespace-pre-line text-muted-foreground"
+                  className="max-w-[70ch] text-base leading-relaxed whitespace-pre-line"
                 >
                   {app.jobDescription}
                 </p>
