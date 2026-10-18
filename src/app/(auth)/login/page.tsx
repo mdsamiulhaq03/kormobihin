@@ -7,7 +7,7 @@ import { safeRedirectPath } from "@/lib/client/api-client";
 export const metadata: Metadata = { title: "Log in" };
 
 export default async function LoginPage({ searchParams }: PageProps<"/login">) {
-  const { next, demo, expired } = await searchParams;
+  const { next, expired } = await searchParams;
   const redirectTo = safeRedirectPath(typeof next === "string" ? next : undefined);
 
   return (
@@ -27,11 +27,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
           Your session expired. Log in again and we’ll take you back to where you were.
         </p>
       ) : null}
-      <LoginForm redirectTo={redirectTo} prefillDemo={demo === "1"} />
-      <p className="text-xs text-muted-foreground">
-        Demo account: <span className="font-mono">demo@kormobihin.app</span> /{" "}
-        <span className="font-mono">Demo@1234</span>
-      </p>
+      <LoginForm redirectTo={redirectTo} />
     </div>
   );
 }

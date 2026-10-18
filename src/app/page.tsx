@@ -23,17 +23,21 @@ import {
 import { PlayWhenVisible } from "@/components/landing/play-when-visible";
 import { Button } from "@/components/ui/button";
 import type { Stage } from "@/generated/prisma/enums";
-import type { Showcase } from "@/lib/domain/showcase";
 import { STAGE_LABELS } from "@/lib/domain/labels";
-import { getDemoShowcase } from "@/lib/services/showcase";
 import { cn } from "@/lib/utils";
 
-// The preview shows live numbers from the demo account (refreshed every 5 minutes), so
-// what a visitor sees here is what they find after logging in. This example is only used
-// when the database can't be reached, and is labelled as an example.
-export const revalidate = 300;
+type ExampleMatch = { company: string; score: number; label: string; missing: string[] };
 
-const EXAMPLE: Showcase = {
+// An illustrative pipeline for the preview and feature cards, labelled as an example
+// on the page. It is not anyone's real data.
+const EXAMPLE: {
+  total: number;
+  pipeline: { stage: Stage; count: number }[];
+  bestSource: { label: string; responded: number; applied: number; rate: number };
+  topMatch: ExampleMatch;
+  lowMatch: ExampleMatch;
+  followUpCompany: string;
+} = {
   total: 9,
   pipeline: [
     { stage: "WISHLIST", count: 3 },
@@ -68,9 +72,9 @@ type Tone = "primary" | "pink" | "sun" | "grape";
 
 type Feature = { title: string; text: string; icon: LucideIcon; tone: Tone; proof: ReactNode };
 
-// Each feature carries one real line from the demo account as proof.
-function features(data: Showcase): Feature[] {
-  const matches = [data.topMatch, data.lowMatch].filter((m) => m !== null);
+// Each feature carries one example line showing what it looks like in the app.
+function features(data: typeof EXAMPLE): Feature[] {
+  const matches = [data.topMatch, data.lowMatch];
   return [
     {
       title: "One pipeline for every job",
@@ -123,7 +127,7 @@ function features(data: Showcase): Feature[] {
         <p className="flex items-center gap-2.5 text-sm">
           <IconBadge icon={MailQuestionIcon} tone="paper" size="sm" />
           <span>
-            <span className="font-semibold">Follow up with {data.followUpCompany ?? "Pathao"}</span>
+            <span className="font-semibold">Follow up with {data.followUpCompany}</span>
             <span className="text-muted-foreground">: no reply yet</span>
           </span>
         </p>
@@ -134,14 +138,14 @@ function features(data: Showcase): Feature[] {
       text: "Reply, interview and offer rates, and which job sites actually answer you.",
       icon: ChartColumnIcon,
       tone: "grape",
-      proof: data.bestSource ? (
+      proof: (
         <p className="text-sm">
           <span className="font-semibold">{data.bestSource.label} replies most often:</span>{" "}
           <span className="text-muted-foreground">
             {data.bestSource.responded} of {data.bestSource.applied} ({data.bestSource.rate}%)
           </span>
         </p>
-      ) : null,
+      ),
     },
   ];
 }
@@ -149,7 +153,7 @@ function features(data: Showcase): Feature[] {
 /** Start time for a step of the preview animation (see .kb-* in globals.css). */
 const delay = (ms: number) => ({ "--kb-delay": `${ms}ms` }) as CSSProperties;
 
-function DemoPreview({ data, live }: { data: Showcase; live: boolean }) {
+function ExamplePreview({ data }: { data: typeof EXAMPLE }) {
   const match = data.topMatch;
   const summary = data.pipeline
     .map(({ stage, count }) => `${count} ${STAGE_LABELS[stage].toLowerCase()}`)
@@ -164,7 +168,7 @@ function DemoPreview({ data, live }: { data: Showcase; live: boolean }) {
       <div
         className="grid gap-6 rounded-[1.75rem_1.75rem_1.75rem_0.5rem] border-2 border-ink bg-card p-5 text-card-foreground shadow-pop-hover sm:p-7"
         role="img"
-        aria-label={`Preview of the demo account: ${summary}${match ? `, and a CV match of ${match.score} out of 100 for ${match.company}${match.missing.length ? `, missing ${match.missing.join(", ")}` : ""}` : ""}.`}
+        aria-label={`Example pipeline: ${summary}, and a CV match of ${match.score} out of 100 for ${match.company}${match.missing.length ? `, missing ${match.missing.join(", ")}` : ""}.`}
       >
         <div className="grid gap-3">
           <p className="font-heading text-sm font-bold">Pipeline: {data.total} jobs</p>
@@ -190,53 +194,49 @@ function DemoPreview({ data, live }: { data: Showcase; live: boolean }) {
         </div>
 
         {/* A section of the same card, not a card inside it. */}
-        {match ? (
-          <div className="grid gap-4 border-t-2 border-dashed border-ink/25 pt-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="flex items-center gap-2 font-heading text-sm font-bold">
-                <IconBadge icon={SparklesIcon} tone="pink" size="sm" />
-                CV match
-              </p>
-              <p className="text-xs text-muted-foreground">{match.company}</p>
-            </div>
-            <div className="flex items-end gap-4">
-              <p
-                className="kb-rise font-heading text-7xl leading-[0.85] font-extrabold tracking-tight text-primary tabular-nums"
-                style={delay(550)}
-              >
-                {match.score}
-              </p>
-              <div className="grid gap-1.5 pb-1">
-                <p className="font-heading font-bold">{match.label} match</p>
-                {match.missing.length > 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    Missing from the CV:{" "}
-                    {match.missing.map((skill) => (
-                      <span
-                        key={skill}
-                        className="kb-pop inline-block rounded-full border-2 border-ink bg-pink px-2 py-0.5 font-bold text-ink"
-                        style={delay(1150)}
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-            <div className="h-4 overflow-hidden rounded-full border-2 border-ink bg-card">
-              <div
-                className="kb-grow-x h-full rounded-r-full bg-primary"
-                style={{ ...delay(650), width: `${match.score}%` }}
-              />
+        <div className="grid gap-4 border-t-2 border-dashed border-ink/25 pt-5">
+          <div className="flex items-center justify-between gap-3">
+            <p className="flex items-center gap-2 font-heading text-sm font-bold">
+              <IconBadge icon={SparklesIcon} tone="pink" size="sm" />
+              CV match
+            </p>
+            <p className="text-xs text-muted-foreground">{match.company}</p>
+          </div>
+          <div className="flex items-end gap-4">
+            <p
+              className="kb-rise font-heading text-7xl leading-[0.85] font-extrabold tracking-tight text-primary tabular-nums"
+              style={delay(550)}
+            >
+              {match.score}
+            </p>
+            <div className="grid gap-1.5 pb-1">
+              <p className="font-heading font-bold">{match.label} match</p>
+              {match.missing.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  Missing from the CV:{" "}
+                  {match.missing.map((skill) => (
+                    <span
+                      key={skill}
+                      className="kb-pop inline-block rounded-full border-2 border-ink bg-pink px-2 py-0.5 font-bold text-ink"
+                      style={delay(1150)}
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </p>
+              ) : null}
             </div>
           </div>
-        ) : null}
+          <div className="h-4 overflow-hidden rounded-full border-2 border-ink bg-card">
+            <div
+              className="kb-grow-x h-full rounded-r-full bg-primary"
+              style={{ ...delay(650), width: `${match.score}%` }}
+            />
+          </div>
+        </div>
       </div>
       <figcaption className="text-xs text-muted-foreground">
-        {live
-          ? "Live from the demo account. Log in to explore it."
-          : "An example pipeline. Log in to the demo account to see real data."}
+        An example pipeline. Yours fills in as you add jobs.
       </figcaption>
     </figure>
   );
@@ -275,9 +275,8 @@ function SourceMarquee() {
   );
 }
 
-export default async function Home() {
-  const showcase = await getDemoShowcase();
-  const data = showcase ?? EXAMPLE;
+export default function Home() {
+  const data = EXAMPLE;
   return (
     <div className="flex min-h-svh flex-col overflow-x-clip">
       <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
@@ -323,9 +322,6 @@ export default async function Home() {
                     </span>
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="h-14 px-6 text-base">
-                  <Link href="/login?demo=1">Try the demo</Link>
-                </Button>
               </div>
             </div>
 
@@ -336,7 +332,7 @@ export default async function Home() {
                 <Plus tone="primary" className="absolute top-1/3 -right-8 size-8" />
               </Confetti>
               <PlayWhenVisible>
-                <DemoPreview data={data} live={showcase !== null} />
+                <ExamplePreview data={data} />
               </PlayWhenVisible>
             </div>
           </div>

@@ -12,18 +12,9 @@ import { ApiClientError, apiRequest } from "@/lib/client/api-client";
 import { apiFieldErrors, zodFieldErrors, type FieldErrors } from "@/lib/client/form-errors";
 import { loginSchema } from "@/lib/validators/auth";
 
-type LoginFormProps = {
-  redirectTo: string;
-  /** Start with the demo account filled in (from the landing page's "Try the demo"). */
-  prefillDemo?: boolean;
-};
-
-// Public demo account, seeded for examiners and visitors.
-const DEMO = { email: "demo@kormobihin.app", password: "Demo@1234" };
-
-export function LoginForm({ redirectTo, prefillDemo = false }: LoginFormProps) {
+export function LoginForm({ redirectTo }: { redirectTo: string }) {
   const router = useRouter();
-  const [values, setValues] = useState(prefillDemo ? DEMO : { email: "", password: "" });
+  const [values, setValues] = useState({ email: "", password: "" });
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -100,21 +91,6 @@ export function LoginForm({ redirectTo, prefillDemo = false }: LoginFormProps) {
       <Button type="submit" size="lg" disabled={submitting} className="mt-1 w-full">
         {submitting ? <Loader2Icon className="animate-spin" aria-hidden /> : null}
         {submitting ? "Logging in…" : "Log in"}
-      </Button>
-
-      <Button
-        type="button"
-        variant="outline"
-        size="lg"
-        className="w-full"
-        disabled={submitting}
-        onClick={() => {
-          setValues(DEMO);
-          setErrors({});
-          setFormError(null);
-        }}
-      >
-        Use the demo account
       </Button>
 
       <p className="text-center text-sm text-muted-foreground">
